@@ -138,12 +138,22 @@ def generate_eo3_dataset_doc(key: str, data: ElementTree) -> dict:
     sensing_time = data.findall("./*/SENSING_TIME")[0].text
     crs_code = data.findall("./*/Tile_Geocoding/HORIZONTAL_CS_CODE")[0].text.lower()
 
-    size_10 = int(data.findall("./*/Tile_Geocoding/Size")[0].text)  # TODO: check resolution == 10
-    geopos_10 = data.findall("./*/Tile_Geocoding/Geoposition")[0]  # TODO: check resolution == 10
-    ulx_10 = int(geopos_10[0].text)
-    uly_10 = int(geopos_10[1].text)
-    xdim_10 = int(geopos_10[2].text)
-    ydim_10 = int(geopos_10[3].text)
+    nrows_10 = int(data.findall("./*/Tile_Geocoding/Size[@resolution='10']/NROWS")[0].text)
+    ncols_10 = int(data.findall("./*/Tile_Geocoding/Size[@resolution='10']/NCOLS")[0].text)
+
+    ulx_10 = float(data.findall("./*/Tile_Geocoding/Geoposition[@resolution='10']/ULX")[0].text)
+    uly_10 = float(data.findall("./*/Tile_Geocoding/Geoposition[@resolution='10']/ULY")[0].text)
+
+    xdim_10 = float(data.findall("./*/Tile_Geocoding/Geoposition[@resolution='10']/XDIM")[0].text)
+    ydim_10 = float(data.findall("./*/Tile_Geocoding/Geoposition[@resolution='10']/YDIM")[0].text)
+
+    trans_10 = [xdim_10, 0.0, ulx_10, 0.0, ydim_10, uly_10, 0.0, 0.0, 1.0]
+
+    ten_list = ['B02_10m', 'B03_10m', 'B04_10m', 'B08_10m']
+    twenty_list = ['B05_20m', 'B06_20m', 'B07_20m', 'B11_20m', 'B12_20m', 'B8A_20m',
+                   'B02_20m', 'B03_20m', 'B04_20m']
+    sixty_list = ['B01_60m', 'B02_60m', 'B03_60m', 'B04_60m', 'B8A_60m', 'B09_60m',
+                  'B05_60m', 'B06_60m', 'B07_60m', 'B11_60m', 'B12_60m']
 
     # level = 'L2A'
     # product_type = data.findall('./*/Product_Info/PRODUCT_TYPE')[0].text
@@ -176,17 +186,23 @@ def generate_eo3_dataset_doc(key: str, data: ElementTree) -> dict:
                 # [X][a0, a1, a2][Pixel]
                 # [Y] = [a3, a4, a5][Line]
                 # [1][0, 0, 1][1]
-                "shape": [7811, 7691],  # TODO: read from data dict
-                "transform": [30, 0, 618285, 0, -30, -1642485, 0, 0, 1],  # TODO: read from data dict
-            }
+                "shape": [nrows_10, ncols_10],
+                "transform": trans_10,
+            },
+            # TODO: add grids for 20m and 60m
+            # "60m": {
+            #     "shape": [size_60, size_60],
+            #     "transform": trans_60,
+            # },
         },
         "measurements": {
-            "B01_60m": {
-                "path": "R60m/B01.jp2",
-            },
-            "B02_10m": {
-                "path": "R10m/B02.jp2",
-            },
+            # "B01_60m": {  # TODO: needs 60m grid
+            #     "grid": "60m",
+            #     "path": "R60m/B01.jp2",
+            # },
+            # "B02_10m": {
+            #     "path": "R10m/B02.jp2",
+            # },
         },
         "location": f"http://sentinel-s2-l2a.s3.amazonaws.com/{keypath.parent}",
         "properties": {
@@ -197,8 +213,11 @@ def generate_eo3_dataset_doc(key: str, data: ElementTree) -> dict:
             "dea:dataset_maturity": "final",
             "odc:product_family": "ard",
         },
-        "lineage": {"source_datasets": {}},
+        "lineage": {},
     }
+    for measurement in ten_list:
+        band, res = measurement.split("_")
+        eo3["measurements"][measurement] = {"path": f"R{res}/{band}.jp2"}
 
     return absolutify_paths(eo3, "sentinel-s2-l2a", key)
 

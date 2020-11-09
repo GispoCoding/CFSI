@@ -265,10 +265,12 @@ description: Sentinel-2 Level 2 - Sen2Cor Bottom of Atmosphere Reflectance
 metadata_type: eo3
 
 metadata:
-  format: {name: JPEG2000}
-  instrument: {name: MSI}
-  platform: {code: SENTINEL_2A}
-  product_type: S2MSI2Ap
+  product:
+    name: s2a_sen2cor_granule
+  properties:
+    eo:instrument: MSI
+    eo:platform: SENTINEL-2A
+    odc:file_format: JPEG2000
 
 measurements:
 - name: 'B01_60m'

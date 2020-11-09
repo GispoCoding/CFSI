@@ -12,9 +12,10 @@ from osgeo import osr
 from ruamel.yaml import YAML
 from xml.etree import ElementTree
 import xmltodict
+from hashlib import md5
 
 import datacube
-from datacube.index.hl import Doc2Dataset
+from datacube.index.hl import Doc2Dataset, load_rules_from_types
 from datacube.utils import changes
 
 # Need to check if we're on new gdal for coordinate order
@@ -91,10 +92,9 @@ def get_s3_url(bucket_name, obj_key):
 
 def absolutify_paths(doc, bucket_name, obj_key):
     objt_key = format_obj_key(obj_key)
-    for measurement in doc["measurements"]:
-        measurement["path"] = get_s3_url(bucket_name, objt_key + '/' + measurement["path"])
-    # for band in doc['image']['bands'].values():
-    #     band['path'] = get_s3_url(bucket_name, objt_key + '/' + band['path'])
+    measurements = doc["measurements"]
+    for measurement in measurements:
+        measurements[measurement]["path"] = get_s3_url(bucket_name, objt_key + '/' + measurements[measurement]["path"])
     return doc
 
 
@@ -111,7 +111,7 @@ def archive_document(doc, uri, index, sources_policy):
     logging.info("Archiving %s and all sources of %s", dataset.id, dataset.id)
 
 
-def add_dataset(doc, uri, index, **kwargs):
+def add_dataset(doc, uri, index: datacube.index.index.Index, **kwargs):
     logging.info("Indexing %s", uri)
     resolver = Doc2Dataset(index, **kwargs)
     dataset, err = resolver(doc, uri)
@@ -149,75 +149,88 @@ def generate_eo3_dataset_doc(key: str, data: ElementTree) -> dict:
 
     trans_10 = [xdim_10, 0.0, ulx_10, 0.0, ydim_10, uly_10, 0.0, 0.0, 1.0]
 
+    nrows_20 = int(data.findall("./*/Tile_Geocoding/Size[@resolution='20']/NROWS")[0].text)
+    ncols_20 = int(data.findall("./*/Tile_Geocoding/Size[@resolution='20']/NCOLS")[0].text)
+
+    ulx_20 = float(data.findall("./*/Tile_Geocoding/Geoposition[@resolution='20']/ULX")[0].text)
+    uly_20 = float(data.findall("./*/Tile_Geocoding/Geoposition[@resolution='20']/ULY")[0].text)
+
+    xdim_20 = float(data.findall("./*/Tile_Geocoding/Geoposition[@resolution='20']/XDIM")[0].text)
+    ydim_20 = float(data.findall("./*/Tile_Geocoding/Geoposition[@resolution='20']/YDIM")[0].text)
+
+    trans_20 = [xdim_20, 0.0, ulx_20, 0.0, ydim_20, uly_20, 0.0, 0.0, 1.0]
+
+    nrows_60 = int(data.findall("./*/Tile_Geocoding/Size[@resolution='60']/NROWS")[0].text)
+    ncols_60 = int(data.findall("./*/Tile_Geocoding/Size[@resolution='60']/NCOLS")[0].text)
+
+    ulx_60 = float(data.findall("./*/Tile_Geocoding/Geoposition[@resolution='60']/ULX")[0].text)
+    uly_60 = float(data.findall("./*/Tile_Geocoding/Geoposition[@resolution='60']/ULY")[0].text)
+
+    xdim_60 = float(data.findall("./*/Tile_Geocoding/Geoposition[@resolution='60']/XDIM")[0].text)
+    ydim_60 = float(data.findall("./*/Tile_Geocoding/Geoposition[@resolution='60']/YDIM")[0].text)
+
+    trans_60 = [xdim_60, 0.0, ulx_60, 0.0, ydim_60, uly_60, 0.0, 0.0, 1.0]
+
     ten_list = ['B02_10m', 'B03_10m', 'B04_10m', 'B08_10m']
     twenty_list = ['B05_20m', 'B06_20m', 'B07_20m', 'B11_20m', 'B12_20m', 'B8A_20m',
                    'B02_20m', 'B03_20m', 'B04_20m']
     sixty_list = ['B01_60m', 'B02_60m', 'B03_60m', 'B04_60m', 'B8A_60m', 'B09_60m',
                   'B05_60m', 'B06_60m', 'B07_60m', 'B11_60m', 'B12_60m']
 
-    # level = 'L2A'
-    # product_type = data.findall('./*/Product_Info/PRODUCT_TYPE')[0].text
-    # ct_time = data.findall('./*/Archiving_Info/ARCHIVING_TIME')[0].text
-    # station = data.findall('./*/Archiving_Info/ARCHIVING_CENTRE')[0].text
-
     eo3 = {
-        "id": str(uuid.uuid4()),
+        "id": md5(key.encode("utf-8")).hexdigest(),
         "$schema": "https://schemas.opendatacube.org/dataset",
-        # "processing_level": level,
-        # "product_type": product_type,
-        # "creation_dt": ct_time,
         "product": {
             "name": "s2a_sen2cor_granule",
         },
-        # "platform": {"code": "SENTINEL_2A"},
-        # "instrument": {"name": "MSI"},
-        # "acquisition": {"groundstation": {"code": station}},
         "crs": crs_code,
-        # Optional GeoJSON object
-        # "geometry": {
-        #     "type": "polygon",
-        #     "coordinates": [[]],  # TODO: read from data dict
-        # },
         "grids": {
             "default": {
-                # shape is basically height, width tuple and transform captures a linear mapping
-                # from pixel space to projected space encoded in a row - major order:
-                # transform [a0, a1, a2, a3, a4, a5, 0, 0, 1]
-                # [X][a0, a1, a2][Pixel]
-                # [Y] = [a3, a4, a5][Line]
-                # [1][0, 0, 1][1]
                 "shape": [nrows_10, ncols_10],
                 "transform": trans_10,
             },
-            # TODO: add grids for 20m and 60m
-            # "60m": {
-            #     "shape": [size_60, size_60],
-            #     "transform": trans_60,
-            # },
+            "20m": {
+                "shape": [nrows_20, ncols_20],
+                "transform": trans_20,
+            },
+            "60m": {
+                "shape": [nrows_60, ncols_60],
+                "transform": trans_60,
+            },
         },
-        "measurements": {
-            # "B01_60m": {  # TODO: needs 60m grid
-            #     "grid": "60m",
-            #     "path": "R60m/B01.jp2",
-            # },
-            # "B02_10m": {
-            #     "path": "R10m/B02.jp2",
-            # },
-        },
+        "measurements": {},
         "location": f"http://sentinel-s2-l2a.s3.amazonaws.com/{keypath.parent}",
         "properties": {
-            "eo:platform": "SENTINEL_2A",
+            "eo:instrument": "MSI",
+            "eo:platform": "SENTINEL-2A",
             "datetime": sensing_time,
             "odc:file_format": "JPEG2000",  # TODO: check validity
             "odc:region_code": regioncode,
-            "dea:dataset_maturity": "final",
-            "odc:product_family": "ard",
         },
         "lineage": {},
     }
     for measurement in ten_list:
         band, res = measurement.split("_")
         eo3["measurements"][measurement] = {"path": f"R{res}/{band}.jp2"}
+
+    for measurement in twenty_list:
+        band, res = measurement.split("_")
+        eo3["measurements"][measurement] = {
+            "path": f"R{res}/{band}.jp2",
+            "grid": "20m",
+        }
+
+    for measurement in sixty_list:
+        band, res = measurement.split("_")
+        eo3["measurements"][measurement] = {
+            "path": f"R{res}/{band}.jp2",
+            "grid": "60m",
+        }
+
+    eo3["measurements"]["SCL_20m"] = {
+        "path": "R20m/SCL.jp2",
+        "grid": "20m",
+    }
 
     return absolutify_paths(eo3, "sentinel-s2-l2a", key)
 
@@ -240,9 +253,8 @@ def worker(config, bucket_name, func, unsafe, sources_policy, queue):
             data = ElementTree.fromstring(content)
             dataset_doc = generate_eo3_dataset_doc(key, data)
             uri = get_s3_url(bucket_name, key)
-            product_def = Path('.' / 's2_granules.yaml')
             logging.info("calling %s", func)
-            func(dataset_doc, uri, index, sources_policy)
+            func(dataset_doc, uri, index)
             queue.task_done()
         except Empty:
             break
@@ -256,8 +268,6 @@ def iterate_datasets(bucket_name, config, func, unsafe, sources_policy):
 
     s3 = boto3.resource('s3')
     bucket = s3.Bucket(bucket_name)
-    # logging.info("Bucket : %s prefix: %s ", bucket_name, str(prefix))
-    # safety = 'safe' if not unsafe else 'unsafe'
     worker_count = 2
     # worker_count = cpu_count() * 2
 
@@ -276,6 +286,7 @@ def iterate_datasets(bucket_name, config, func, unsafe, sources_policy):
 
     for proc in processes:
         proc.join()
+    logging.info("Processing done")
 
 
 @click.command(help="Enter Bucket name. Optional to enter configuration file to access a different database")

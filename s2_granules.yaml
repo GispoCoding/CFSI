@@ -1,14 +1,14 @@
 name: s2a_level1c_granule
 description: Sentinel-2A Level1C - Ortho Rectified Top of Atmosphere Reflectance
-metadata_type: eo
+metadata_type: eo3
 
 metadata:
-  format: {name: JPEG2000}
-  instrument: {name: MSI}
-  platform: {code: Sentinel-2A}
-  processing_level: Level-1C
-  product_format: {name: SAFE_COMPACT}
-  product_type: S2MSI1C
+  product:
+    name: s2a_level1c_granule
+  properties:
+    eo:instrument: MSI
+    eo:platform: SENTINEL-2A
+    odc:file_format: JPEG2000
 
 measurements:
 - name: 'B01'
@@ -131,15 +131,15 @@ measurements:
 
 name: s2b_level1c_granule
 description: Sentinel-2B Level1C - Ortho Rectified Top of Atmosphere Reflectance
-metadata_type: eo
+metadata_type: eo3
 
 metadata:
-  format: {name: JPEG2000}
-  instrument: {name: MSI}
-  platform: {code: Sentinel-2B}
-  processing_level: Level-1C
-  product_format: {name: SAFE_COMPACT}
-  product_type: S2MSI1C
+  product:
+    name: s2a_level1c_granule
+  properties:
+    eo:instrument: MSI
+    eo:platform: SENTINEL-2B
+    odc:file_format: JPEG2000
 
 measurements:
 - name: 'B01'

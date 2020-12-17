@@ -1,33 +1,19 @@
 # coding: utf-8
 import logging
-import re
-import uuid
 from multiprocessing import Process, current_process, Manager, cpu_count
 from pathlib import Path
 from queue import Empty
 
 import boto3
 import click
-from osgeo import osr
-from ruamel.yaml import YAML
 from xml.etree import ElementTree
-import xmltodict
 from hashlib import md5
 
 import datacube
-from datacube.index.hl import Doc2Dataset, load_rules_from_types
+from datacube.index.hl import Doc2Dataset
 from datacube.utils import changes
 
-# Need to check if we're on new gdal for coordinate order
-import osgeo.gdal
-from packaging import version
-
-LON_LAT_ORDER = version.parse(osgeo.gdal.__version__) < version.parse("3.0.0")
-
 GUARDIAN = "GUARDIAN_QUEUE_EMPTY"
-AWS_PDS_TXT_SUFFIX = "MTL.txt"
-
-MTL_PAIRS_RE = re.compile(r'(\w+)\s=\s(.*)')
 
 
 def _parse_value(s):
@@ -38,46 +24,6 @@ def _parse_value(s):
         except ValueError:
             pass
     return s
-
-
-def _parse_group(lines):
-    tree = {}
-    for line in lines:
-        match = MTL_PAIRS_RE.findall(line)
-        if match:
-            key, value = match[0]
-            if key == 'GROUP':
-                tree[value] = _parse_group(lines)
-            elif key == 'END_GROUP':
-                break
-            else:
-                tree[key] = _parse_value(value)
-    return tree
-
-
-def get_geo_ref_points(info):
-    return {
-        'ul': {'x': info['CORNER_UL_PROJECTION_X_PRODUCT'], 'y': info['CORNER_UL_PROJECTION_Y_PRODUCT']},
-        'ur': {'x': info['CORNER_UR_PROJECTION_X_PRODUCT'], 'y': info['CORNER_UR_PROJECTION_Y_PRODUCT']},
-        'll': {'x': info['CORNER_LL_PROJECTION_X_PRODUCT'], 'y': info['CORNER_LL_PROJECTION_Y_PRODUCT']},
-        'lr': {'x': info['CORNER_LR_PROJECTION_X_PRODUCT'], 'y': info['CORNER_LR_PROJECTION_Y_PRODUCT']},
-    }
-
-
-def get_coords(geo_ref_points, spatial_ref):
-    t = osr.CoordinateTransformation(spatial_ref, spatial_ref.CloneGeogCS())
-
-    def transform(p):
-        if LON_LAT_ORDER:
-            # GDAL 2.0 order
-            lon, lat, z = t.TransformPoint(p['x'], p['y'])
-        else:
-            # GDAL 3.0 order
-            lat, lon, z = t.TransformPoint(p['x'], p['y'])
-            
-        return {'lon': lon, 'lat': lat}
-        
-    return {key: transform(p) for key, p in geo_ref_points.items()}
 
 
 def format_obj_key(obj_key):
@@ -96,19 +42,6 @@ def absolutify_paths(doc, bucket_name, obj_key):
     for measurement in measurements:
         measurements[measurement]["path"] = get_s3_url(bucket_name, objt_key + '/' + measurements[measurement]["path"])
     return doc
-
-
-def archive_document(doc, uri, index, sources_policy):
-    def get_ids(dataset):
-        ds = index.datasets.get(dataset.id, include_sources=True)
-        for source in ds.sources.values():
-            yield source.id
-        yield dataset.id
-
-    resolver = Doc2Dataset(index)
-    dataset, err = resolver(doc, uri)
-    index.datasets.archive(get_ids(dataset))
-    logging.info("Archiving %s and all sources of %s", dataset.id, dataset.id)
 
 
 def add_dataset(doc, uri, index: datacube.index.index.Index, **kwargs):
@@ -262,7 +195,7 @@ def worker(config, bucket_name, func, unsafe, sources_policy, queue):
             break
 
 
-def iterate_datasets(bucket_name, config, func, unsafe, sources_policy):
+def iterate_datasets(bucket_name, config, unsafe, sources_policy):
     manager = Manager()
     queue = manager.Queue()
 
@@ -273,7 +206,7 @@ def iterate_datasets(bucket_name, config, func, unsafe, sources_policy):
 
     processes = []
     for i in range(worker_count):
-        proc = Process(target=worker, args=(config, bucket_name, func, unsafe, sources_policy, queue))
+        proc = Process(target=worker, args=(config, bucket_name, add_dataset, unsafe, sources_policy, queue))
         processes.append(proc)
         proc.start()
 
@@ -293,15 +226,12 @@ def iterate_datasets(bucket_name, config, func, unsafe, sources_policy):
 @click.argument('bucket_name')
 @click.option('--config', '-c', help=" Pass the configuration file to access the database",
               type=click.Path(exists=True))
-@click.option('--archive', is_flag=True,
-              help="If true, datasets found in the specified bucket and prefix will be archived")
 @click.option('--unsafe', is_flag=True,
               help="If true, YAML will be parsed unsafely. Only use on trusted datasets. Only valid if suffix is yaml")
 @click.option('--sources_policy', default="verify", help="verify, ensure, skip")
-def main(bucket_name, config, archive, unsafe, sources_policy):
+def main(bucket_name, config, unsafe, sources_policy):
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
-    action = archive_document if archive else add_dataset
-    iterate_datasets(bucket_name, config, action, unsafe, sources_policy)
+    iterate_datasets(bucket_name, config, unsafe, sources_policy)
 
 
 if __name__ == "__main__":

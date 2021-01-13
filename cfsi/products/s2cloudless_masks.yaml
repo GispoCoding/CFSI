@@ -1,0 +1,24 @@
+name: s2a_level1c_s2cloudless
+description: Sentinel-2A Level1C - Cloud and shadow masks from s2cloudless
+metadata_type: eo3
+
+metadata:
+  product:
+    name: s2a_level1c_s2cloudless
+  properties:
+    eo:instrument: MSI
+    eo:platform: SENTINEL-2A
+    odc:file_format: JPEG2000
+
+measurements:
+  - name: 'B01'
+    aliases: [band_01, B01, Band1, cloud]
+    units: '1'
+    dtype: uint8
+    nodata: 0
+
+  - name: 'B02'
+    aliases: [band_02, B02, Band2, shadow]
+    units: '1'
+    dtype: uint8
+    nodata: 0

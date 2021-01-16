@@ -9,6 +9,8 @@ export CFSI_BASE_DIR="/home/ubuntu/cfsi" > /etc/profile.d/cfsi.sh
 set -e
 apt update && apt install -y \
     docker docker-compose git
+sudo usermod -aG docker ubuntu
 git clone https://github.com/GispoCoding/CFSI "$CFSI_BASE_DIR"
+chown -R ubuntu:ubuntu "$CFSI_BASE_DIR"
 cd "$CFSI_BASE_DIR"
 docker-compose up -d

@@ -5,4 +5,8 @@ __pycache__/
 *.py[cod]
 *.so
 *.log
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
 

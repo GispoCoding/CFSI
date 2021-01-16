@@ -5,6 +5,7 @@ services:
         environment:
             - AWS_ACCESS_KEY_ID
             - AWS_SECRET_ACCESS_KEY
+            - CFSI_BASE_DIR=/home/ubuntu/cfsi
             - CFSI_OUTPUT_DIR=/output
         depends_on:
             - db

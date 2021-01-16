@@ -1,6 +1,7 @@
 FROM osgeo/gdal:ubuntu-small-3.2.1
 
 ENV AWS_REQUEST_PAYER=requester
+ENV CFSI_BASE_DIR=/app/cfsi
 ENV DATACUBE_DB_URL=postgresql://opendatacube:opendatacube@db:5432/opendatacube
 
 COPY ./requirements.txt /tmp/requirements.txt

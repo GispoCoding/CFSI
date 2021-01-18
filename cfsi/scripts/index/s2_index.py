@@ -1,3 +1,4 @@
+# TODO: move as subclass of ODCIndexer
 import os
 from queue import Queue
 from pathlib import Path
@@ -11,11 +12,12 @@ from xml.etree import ElementTree
 from hashlib import md5
 
 import datacube
-from datacube.model import Dataset as ODCDataset
 from datacube.index.hl import Doc2Dataset
+from datacube.index.index import Index as dcIndex
+from datacube.model import Dataset as ODCDataset
 from datacube.utils import changes
 
-from ...utils.logger import create_logger
+from cfsi.utils.logger import create_logger
 
 LOGGER = create_logger("s2-index")
 GUARDIAN = "GUARDIAN_QUEUE_EMPTY"
@@ -63,9 +65,9 @@ def absolutify_s3_paths(doc: Dict, uri: str) -> Dict:
 
 def add_dataset(doc: Dict,
                 uri: str,
-                index: datacube.index.index.Index,
+                index: dcIndex,
                 **kwargs) -> (ODCDataset, Union[Exception, None]):
-    """ Adds dataset to ODC index """
+    """ Adds dataset to dcIndex """
     LOGGER.info("Indexing %s", uri)
     resolver = Doc2Dataset(index, **kwargs)
     dataset, err = resolver(doc, uri)
@@ -135,7 +137,7 @@ def generate_measurements(bucket_name: str) -> Dict:
         band, resolution = measurement.split("_")
         if bucket_name == L2A_BUCKET:
             file_name = measurement
-        elif bucket_name == L1C_BUCKET:
+        else:
             measurement = file_name = band
         res[measurement] = {"path": f"{file_name}.jp2"}
         if resolution == "10m":

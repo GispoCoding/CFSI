@@ -136,7 +136,7 @@ def generate_measurements(bucket_name: str) -> Dict:
     for measurement in MEASUREMENTS[bucket_name]:
         band, resolution = measurement.split("_")
         if bucket_name == L2A_BUCKET:
-            file_name = measurement
+            file_name = f"R{resolution}/{band}"
         else:
             measurement = file_name = band
         res[measurement] = {"path": f"{file_name}.jp2"}

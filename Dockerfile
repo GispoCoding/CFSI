@@ -1,9 +1,5 @@
 FROM osgeo/gdal:ubuntu-small-3.2.1
 
-ENV AWS_REQUEST_PAYER=requester
-ENV CFSI_BASE_DIR=/app/cfsi
-ENV DATACUBE_DB_URL=postgresql://opendatacube:opendatacube@db:5432/opendatacube
-
 COPY ./requirements.txt /tmp/requirements.txt
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -14,6 +10,10 @@ RUN apt-get update && \
     cp /etc/ssl/certs/ca-certificates.crt /etc/pki/tls/certs/ca-bundle.crt && \
     rm -rf /var/lib/apt/lists/* && \
     useradd -m app
+
+ENV AWS_REQUEST_PAYER=requester
+ENV CFSI_BASE_DIR=/app/cfsi
+ENV DATACUBE_DB_URL=postgresql://opendatacube:opendatacube@db:5432/opendatacube
 
 WORKDIR /app
 COPY cfsi cfsi

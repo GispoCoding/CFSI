@@ -2,7 +2,8 @@
 
 echo export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}\; \
 export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}\; \
-export CFSI_BASE_DIR="/home/ubuntu/cfsi" > /etc/profile.d/cfsi.sh
+export CFSI_BASE_DIR="/home/ubuntu/cfsi"\; \
+export CFSI_OUTPUT_DIR="/home/ubuntu/cfsi_output" > /etc/profile.d/cfsi.sh
 
 . /etc/profile.d/cfsi.sh
 

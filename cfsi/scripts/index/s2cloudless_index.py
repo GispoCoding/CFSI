@@ -1,4 +1,3 @@
-import os
 from hashlib import md5
 from logging import DEBUG
 from pathlib import Path
@@ -9,8 +8,9 @@ from datacube.model import Dataset as ODCDataset
 from datacube.utils import changes
 from datacube.utils.changes import DocumentMismatchError
 
-from .index import ODCIndexer
-from ...utils.logger import create_logger
+from cfsi.scripts.index.index import ODCIndexer  # TODO: add to init.py
+from cfsi.utils.logger import create_logger
+from cfsi.utils.utils import container_path_to_global_path  # TODO: add to init.py
 
 LOGGER = create_logger("s2cloudless-indexer", level=DEBUG)
 
@@ -21,12 +21,16 @@ class S2CloudlessIndexer(ODCIndexer):
         """ Set up indexer """
         super().__init__(name)
 
-    def index(self, s2cloudless_output: Dict[ODCDataset, Dict[str, Path]]):
+    def index(self, s2cloudless_output: Dict[ODCDataset, Dict[str, Path]]) -> List[ODCDataset]:
         """ Indexes s2cloudless output masks to ODC.
          :param s2cloudless_output: L1C ODCDataset: s2cloudless output mask file paths """
+        indexed_datasets: List[ODCDataset] = []
         for l1c_dataset in s2cloudless_output:
             eo3_doc = self.generate_eo3_dataset_doc(l1c_dataset, s2cloudless_output[l1c_dataset])
-            self.add_dataset(eo3_doc)
+            dataset, exception = self.add_dataset(eo3_doc)
+            if not exception:
+                indexed_datasets.append(dataset)
+        return indexed_datasets
 
     def generate_eo3_dataset_doc(self, l1c_dataset: ODCDataset, masks: Dict[str, Path]):
         """ Generates and returns a s2cloudless eo3 metadata document """
@@ -35,7 +39,7 @@ class S2CloudlessIndexer(ODCIndexer):
         LOGGER.debug(f"Indexing s2cloudless output, masks: {masks}")
         # TODO: handle writing to S3
         protocol = "file:/"
-        cloud_mask_path, shadow_mask_path = self.container_path_to_global_path(cloud_mask_path, shadow_mask_path)
+        cloud_mask_path, shadow_mask_path = container_path_to_global_path(cloud_mask_path, shadow_mask_path)
         uri = protocol + str(cloud_mask_path.parent)
 
         LOGGER.debug(f"Generated output uri: {uri}")
@@ -88,22 +92,6 @@ class S2CloudlessIndexer(ODCIndexer):
             }
         }
         return eo3
-
-    @staticmethod
-    def container_path_to_global_path(*file_paths: Path) -> List[Path]:
-        """ Translates container paths to global paths based on
-        CFSI_CONTAINER_OUTPUT and CFSI_OUTPUT_DIR env variables.
-        e.g. /output/tiles/... -> /home/ubuntu/cfsi_output/tiles/... """
-        res: List[Path] = []
-        container_output_path = os.environ["CFSI_CONTAINER_OUTPUT"]
-        external_output_path = os.environ["CFSI_OUTPUT_DIR"]
-        for file_path in file_paths:
-            if str(file_path).startswith(container_output_path):
-                res.append(Path(str(file_path).replace(container_output_path, external_output_path)))
-            else:
-                res.append(file_path)
-
-        return res
 
     def add_dataset(self, doc: Dict, **kwargs) -> (ODCDataset, Union[Exception, None]):
         """ Adds dataset to dcIndex """

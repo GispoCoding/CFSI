@@ -11,14 +11,14 @@ metadata:
     odc:file_format: JPEG2000
 
 measurements:
-  - name: 'B01'
-    aliases: [band_01, B01, Band1, cloud]
+  - name: 'cloud_mask'
+    aliases: [cloud, clouds]
     units: '1'
     dtype: uint8
     nodata: 0
 
-  - name: 'B02'
-    aliases: [band_02, B02, Band2, shadow]
+  - name: 'shadow_mask'
+    aliases: [shadow, shadows]
     units: '1'
     dtype: uint8
     nodata: 0

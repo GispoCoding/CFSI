@@ -21,17 +21,24 @@ class S2CloudlessIndexer(ODCIndexer):
         """ Set up indexer """
         super().__init__(name)
 
-    def index(self, s2cloudless_output: Dict[ODCDataset, List[Path]]):
+    def index(self, s2cloudless_output: Dict[ODCDataset, Dict[str, Path]]):
         """ Indexes s2cloudless output masks to ODC.
          :param s2cloudless_output: L1C ODCDataset: s2cloudless output mask file paths """
         for l1c_dataset in s2cloudless_output:
-            output_files = s2cloudless_output[l1c_dataset]
-            eo3_doc = self.generate_eo3_dataset_doc(l1c_dataset, output_files)
+            eo3_doc = self.generate_eo3_dataset_doc(l1c_dataset, s2cloudless_output[l1c_dataset])
             self.add_dataset(eo3_doc)
 
-    def generate_eo3_dataset_doc(self, l1c_dataset: ODCDataset, file_paths: List[Path]):
+    def generate_eo3_dataset_doc(self, l1c_dataset: ODCDataset, masks: Dict[str, Path]):
         """ Generates and returns a s2cloudless eo3 metadata document """
-        output_uri = "file:/" + str(file_paths[0].parent)  # TODO: handle S3 output
+        cloud_mask_path = masks["cloud_mask"]
+        shadow_mask_path = masks["shadow_mask"]
+        LOGGER.debug(f"Indexing s2cloudless output, masks: {masks}")
+        # TODO: handle writing to S3
+        protocol = "file:/"
+        cloud_mask_path, shadow_mask_path = self.container_path_to_global_path(cloud_mask_path, shadow_mask_path)
+        uri = protocol + str(cloud_mask_path.parent)
+
+        LOGGER.debug(f"Generated output uri: {uri}")
         l1c_uri = l1c_dataset.uris[0]
         l1c_metadata_uri = l1c_uri + "/metadata.xml"
         l2a_dataset_id = self.l2a_dataset_from_l1c(l1c_dataset).id
@@ -43,7 +50,7 @@ class S2CloudlessIndexer(ODCIndexer):
         grids = self.read_s2_grid_metadata(l1c_metadata_doc)
 
         eo3 = {
-            "id": md5(str(output_uri).encode("utf-8")).hexdigest(),
+            "id": md5(str(uri).encode("utf-8")).hexdigest(),
             "$schema": "https://schemas.opendatacube.org/dataset",
             "product": {
                 "name": "s2a_level1c_s2cloudless",
@@ -56,16 +63,16 @@ class S2CloudlessIndexer(ODCIndexer):
                 },
             },
             "measurements": {
-                "B01": {
+                "cloud_mask": {
                     "grid": "default",
-                    "path": str(file_paths[0]),
+                    "path": str(cloud_mask_path),
                 },
-                "B02": {
+                "shadow_mask": {
                     "grid": "default",
-                    "path": str(file_paths[1]),
+                    "path": str(shadow_mask_path),
                 },
             },
-            "uri": str(output_uri),
+            "uri": str(uri),
             "properties": {
                 "tile_id": tile_metadata.tile_id,
                 "eo:instrument": "MSI",

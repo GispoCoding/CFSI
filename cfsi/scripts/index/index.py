@@ -12,10 +12,9 @@ from datacube import Datacube
 from datacube.model import Dataset as ODCDataset
 
 from cfsi.utils.logger import create_logger
+from cfsi.utils.utils import swap_s2_bucket_names
 
 LOGGER = create_logger("ODCIndexer", level=DEBUG)
-L1C_BUCKET = "sentinel-s2-l1c"
-L2A_BUCKET = "sentinel-s2-l2a"
 
 
 class ODCIndexer:
@@ -97,19 +96,10 @@ class ODCIndexer:
                                           0.0, 0.0, 1.0]
         return grids
 
-    @staticmethod
-    def swap_s2_bucket_names(uri: str) -> str:
-        """ Swaps L1C <-> L2A bucket names in given uri string """
-        if L1C_BUCKET in uri:
-            return uri.replace(L1C_BUCKET, L2A_BUCKET)
-        elif L2A_BUCKET in uri:
-            return uri.replace(L2A_BUCKET, L1C_BUCKET)
-        raise ValueError  # TODO: add custom exception
-
     def l2a_dataset_from_l1c(self, l1c_dataset: ODCDataset):
         """ Gets the S2 L2A dataset ODCDataset that corresponds to l1c_dataset """
         l1c_uri = l1c_dataset.uris[0]
-        l2a_uri = self.swap_s2_bucket_names(l1c_uri)
+        l2a_uri = swap_s2_bucket_names(l1c_uri)
         l2a_dataset_id = self.odcdataset_id_from_uri(l2a_uri, "s2a_sen2cor_granule")
         l2a_odcdataset: ODCDataset = self.dc.index.datasets.get(l2a_dataset_id)
         return l2a_odcdataset

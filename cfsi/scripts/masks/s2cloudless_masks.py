@@ -194,7 +194,16 @@ def main():
             break
 
     LOGGER.info(f"Creating mosaic from {len(indexed_masks)} masks")
-    mosaic_from_mask_datasets(indexed_masks)
+    mosaic_ds = mosaic_from_mask_datasets(indexed_masks)
+    mosaic_filepath = Path(OUTPUT_PATH / "latest_mosaic.tif")
+    LOGGER.info(f"Writing mosaic to {mosaic_filepath}")
+    geo_transform = mosaic_ds.geobox.transform.to_gdal()
+    projection = mosaic_ds.geobox.crs.wkt
+    mosaic_data: List[np.ndarray] = [np.squeeze(mosaic_ds[band].values) for band in mosaic_ds.data_vars]
+    array_to_geotiff_multiband(str(mosaic_filepath),
+                               mosaic_data,
+                               geo_transform,
+                               projection)
 
 
 if __name__ == "__main__":

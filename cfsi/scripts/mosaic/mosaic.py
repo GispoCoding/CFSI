@@ -21,17 +21,7 @@ def mosaic_from_mask_datasets(mask_datasets: List[ODCDataset]) -> xa.Dataset:
     mask_dict = {}
     for dataset in mask_datasets:
         LOGGER.debug(f"{type(dataset)}: {dataset}")
-        try:
-            mask_dict[dataset.id] = UUID(dataset.metadata_doc["properties"]["l2a_dataset_id"])
-        except AttributeError as err:
-            LOGGER.debug(f"Error when mosaicing: {err}")
-            l2a_id = dataset.metadata_doc["properties"]["l2a_dataset_id"]
-            l2a_id_type = type(l2a_id)
-            LOGGER.debug("Value and type of dataset.metadata_cod['properties']['l2a_dataset_id']:"
-                         f"{l2a_id}, {l2a_id_type}")
-            LOGGER.debug("Trying without UUID()")
-            mask_dict[dataset.id] = dataset.metadata_doc["properties"]["l2a_dataset_id"]
-            LOGGER.debug("Without UUID: success")
+        mask_dict[dataset.id] = dataset.metadata_doc["properties"]["l2a_dataset_id"]
 
     mask_dataset_ids = list(mask_dict.keys())
     l2a_dataset_ids = list(mask_dict.values())

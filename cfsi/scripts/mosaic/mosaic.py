@@ -15,6 +15,51 @@ OUTPUT_BANDS = ["B02_10m", "B03_10m", "B04_10m"]
 RECENTNESS = True
 
 
+def mosaic_from_mask_datasets(mask_datasets: List[ODCDataset]) -> xa.Dataset:
+    """ Creates a cloudless mosaic from cloud/shadow mask ODCDatasets
+    :param mask_datasets: List of ODCDatasets with cloud_mask, shadow_mask measurements """
+    mask_dict = {}
+    for dataset in mask_datasets:
+        LOGGER.debug(f"{type(dataset)}: {dataset}")
+        try:
+            mask_dict[dataset.id] = UUID(dataset.metadata_doc["properties"]["l2a_dataset_id"])
+        except AttributeError as err:
+            LOGGER.debug(f"Error when mosaicing: {err}")
+            l2a_id = dataset.metadata_doc["properties"]["l2a_dataset_id"]
+            l2a_id_type = type(l2a_id)
+            LOGGER.debug("Value and type of dataset.metadata_cod['properties']['l2a_dataset_id']:"
+                         f"{l2a_id}, {l2a_id_type}")
+            LOGGER.debug("Trying without UUID()")
+            mask_dict[dataset.id] = dataset.metadata_doc["properties"]["l2a_dataset_id"]
+            LOGGER.debug("Without UUID: success")
+
+    mask_dataset_ids = list(mask_dict.keys())
+    l2a_dataset_ids = list(mask_dict.values())
+
+    ds_l2a = dataset_from_odcdataset("s2a_sen2cor_granule", ids=l2a_dataset_ids)
+    mask_product_name = mask_datasets[0].type.name
+    ds_mask = dataset_from_odcdataset(mask_product_name, ids=mask_dataset_ids)
+    ds_merged = ds_l2a.merge(ds_mask)
+    ds_merged = ds_merged.where((ds_merged.cloud_mask == 0) & (ds_merged.shadow_mask == 0), 0)
+
+    recentness: int = 1  # 0: don't check, 1: check once, 2: check for every band
+
+    ds_out: xa.Dataset = ds_merged.copy(deep=True).isel(time=-1)
+    for band in OUTPUT_BANDS:
+        mosaic_da = mosaic_from_data_array(ds_merged[band], recentness=recentness)
+        ds_out[band].values = mosaic_da[band].values
+        if recentness:
+            if recentness == 1:
+                ds_out["recentness"] = mosaic_da[f"{band}_recentness"]
+                recentness = 0
+            else:
+                ds_out[f"{band}_recentness"] = mosaic_da[f"{band}_recentness"]
+
+    ds_out = ds_out.drop_vars(key for key in ds_out.data_vars.keys()
+                              if key not in OUTPUT_BANDS and "recentness" not in key)
+    return ds_out
+
+
 def mosaic_from_data_array(da_in: xa.DataArray, recentness: int = 0) -> xa.Dataset:
     """ Creates a most-recent-to-oldest mosaic of the input dataset.
     da_in: A xa.DataArray retrieved from the Data Cube; should contain:
@@ -43,37 +88,3 @@ def mosaic_from_data_array(da_in: xa.DataArray, recentness: int = 0) -> xa.Datas
         return xa.merge([da_out, recentness_data])
 
     return da_out.to_dataset()
-
-
-def mosaic_from_mask_datasets(mask_datasets: List[ODCDataset]) -> xa.Dataset:
-    """ Creates a cloudless mosaic from cloud/shadow mask ODCDatasets
-    :param mask_datasets: List of ODCDatasets with cloud_mask, shadow_mask measurements """
-    mask_dict = {}
-    for dataset in mask_datasets:
-        mask_dict[dataset.id] = UUID(dataset.metadata_doc["properties"]["l2a_dataset_id"])
-
-    mask_dataset_ids = list(mask_dict.keys())
-    l2a_dataset_ids = list(mask_dict.values())
-
-    ds_l2a = dataset_from_odcdataset("s2a_sen2cor_granule", ids=l2a_dataset_ids)
-    mask_product_name = mask_datasets[0].type.name
-    ds_mask = dataset_from_odcdataset(mask_product_name, ids=mask_dataset_ids)
-    ds_merged = ds_l2a.merge(ds_mask)
-    ds_merged = ds_merged.where((ds_merged.cloud_mask == 0) & (ds_merged.shadow_mask == 0), 0)
-
-    recentness: int = 1  # 0: don't check, 1: check once, 2: check for every band
-
-    ds_out: xa.Dataset = ds_merged.copy(deep=True).isel(time=-1)
-    for band in OUTPUT_BANDS:
-        mosaic_da = mosaic_from_data_array(ds_merged[band], recentness=recentness)
-        ds_out[band].values = mosaic_da[band].values
-        if recentness:
-            if recentness == 1:
-                ds_out["recentness"] = mosaic_da[f"{band}_recentness"]
-                recentness = 0
-            else:
-                ds_out[f"{band}_recentness"] = mosaic_da[f"{band}_recentness"]
-
-    ds_out = ds_out.drop_vars(key for key in ds_out.data_vars.keys()
-                              if key not in OUTPUT_BANDS and "recentness" not in key)
-    return ds_out

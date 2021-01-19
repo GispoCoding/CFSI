@@ -8,7 +8,7 @@ def create_logger(
      TODO: add rotating log file handler. """
     logger = logging.getLogger(name)
     logger.setLevel(level)
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
+    formatter = logging.Formatter('%(asctime)s\t%(levelname)s\t%(name)s\t%(message)s')
 
     stream_handler = logging.StreamHandler()
     stream_handler.setLevel(level)

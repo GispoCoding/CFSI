@@ -50,9 +50,9 @@ def process_dataset(dataset: ODCDataset) -> (np.ndarray, np.ndarray):
     LOGGER.info("Fetching data to array")
     array = np.moveaxis(ds.to_array().values.astype("float64") / 10000, 0, -1)
     LOGGER.debug(f"Loaded array shaped {array.shape} into memory, size {array.nbytes} bytes")
-    LOGGER.info("Generating cloud masks")
+    LOGGER.info(f"Generating cloud masks for {s3_key}")
     cloud_masks = generate_cloud_masks(array)
-    LOGGER.info("Generating shadow masks")
+    LOGGER.info(f"Generating shadow masks for {s3_key}")
     # TODO: evaluate performance
     shadow_masks = generate_cloud_shadow_masks(array[:, :, :, 7], cloud_masks, tile_props["mean_sun_azimuth"])
 
@@ -170,8 +170,11 @@ def main():
     l1c_datasets = dc.find_datasets(product="s2a_level1c_granule")
     indexed_masks: List[ODCDataset] = []
 
-    i = 0
+    i = 1
     max_iterations = 200
+    if len(l1c_datasets) < max_iterations:
+        max_iterations = l1c_datasets
+
     for dataset in l1c_datasets:
         LOGGER.debug(f"Iteration {i}/{max_iterations}")
         LOGGER.info(f"Processing {dataset}")
@@ -190,7 +193,7 @@ def main():
         LOGGER.info(f"Finished processing {dataset}, indexing output")
         indexed_masks += S2CloudlessIndexer().index({dataset: output_masks})
         i += 1
-        if i >= max_iterations:  # TODO: remove
+        if i > max_iterations:  # TODO: remove
             LOGGER.warning(f"Mask generation reached maximum iterations count {max_iterations}")
             break
 

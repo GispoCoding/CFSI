@@ -19,10 +19,12 @@ def mosaic_from_mask_datasets(mask_datasets: List[ODCDataset]) -> xa.Dataset:
     """ Creates a cloudless mosaic from cloud/shadow mask ODCDatasets
     :param mask_datasets: List of ODCDatasets with cloud_mask, shadow_mask measurements """
     mask_dict = {}
+    LOGGER.debug(f"Using the following {len(mask_datasets)} masks for mosaic generation")
     for dataset in mask_datasets:
         LOGGER.debug(f"{type(dataset)}: {dataset}")
         mask_dict[dataset.id] = dataset.metadata_doc["properties"]["l2a_dataset_id"]
 
+    LOGGER.debug("Setting up mosaic data cube")
     mask_dataset_ids = list(mask_dict.keys())
     l2a_dataset_ids = list(mask_dict.values())
 
@@ -34,17 +36,24 @@ def mosaic_from_mask_datasets(mask_datasets: List[ODCDataset]) -> xa.Dataset:
 
     recentness: int = 1  # 0: don't check, 1: check once, 2: check for every band
 
+    LOGGER.debug("Entering main mosaic loop")
+    i = 1
     ds_out: xa.Dataset = ds_merged.copy(deep=True).isel(time=-1)
     for band in OUTPUT_BANDS:
+        LOGGER.info(f"Creating mosaic for band {band}, {i}/{len(OUTPUT_BANDS)}")
         mosaic_da = mosaic_from_data_array(ds_merged[band], recentness=recentness)
         ds_out[band].values = mosaic_da[band].values
         if recentness:
             if recentness == 1:
                 ds_out["recentness"] = mosaic_da[f"{band}_recentness"]
+                LOGGER.info("Generated recentness array once")
                 recentness = 0
             else:
                 ds_out[f"{band}_recentness"] = mosaic_da[f"{band}_recentness"]
+                LOGGER.info(f"Generated recentness array for band {band}")
+        i += 1
 
+    LOGGER.info("Main mosaic loop finished")
     ds_out = ds_out.drop_vars(key for key in ds_out.data_vars.keys()
                               if key not in OUTPUT_BANDS and "recentness" not in key)
     return ds_out

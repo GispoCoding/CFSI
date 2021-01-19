@@ -39,7 +39,9 @@ class S2CloudlessIndexer(ODCIndexer):
         LOGGER.debug(f"Indexing s2cloudless output, masks: {masks}")
         # TODO: handle writing to S3
         protocol = "file:/"
-        cloud_mask_path, shadow_mask_path = container_path_to_global_path(cloud_mask_path, shadow_mask_path)
+        swap_fs = False
+        if swap_fs:  # TODO: determine when to swap between host and
+            cloud_mask_path, shadow_mask_path = container_path_to_global_path(cloud_mask_path, shadow_mask_path)
         uri = protocol + str(cloud_mask_path.parent)
 
         LOGGER.debug(f"Generated output uri: {uri}")

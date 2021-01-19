@@ -83,7 +83,7 @@ resource "aws_network_interface" "cfsi_server_nic" {
 resource "aws_instance" "cfsi_server" {
   ami = "ami-0502e817a62226e03"
   availability_zone = "eu-central-1a"
-  instance_type = "t3a.medium"
+  instance_type = "c5a.16xlarge"
   key_name = "cfsi"
   network_interface {
     device_index = 0

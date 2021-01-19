@@ -14,4 +14,6 @@ sudo usermod -aG docker ubuntu
 git clone https://github.com/GispoCoding/CFSI "$CFSI_BASE_DIR"
 chown -R ubuntu:ubuntu "$CFSI_BASE_DIR"
 cd "$CFSI_BASE_DIR"
+# shellcheck disable=SC2174
+mkdir -m 777 -p "$CFSI_OUTPUT_DIR"
 docker-compose up -d

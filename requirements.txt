@@ -2,3 +2,5 @@ boto3~=1.16
 datacube~=1.8.3
 gdal==3.2.1
 s2cloudless~=1.4.0
+numpy~=1.19.5
+xarray~=0.16.2

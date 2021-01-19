@@ -1,34 +1,32 @@
-from os import environ
-from typing import Union, List
+import os
+from typing import Dict, List, Union
 from pathlib import Path
-import logging
+from logging import DEBUG
 import datacube
 from datacube.model import Dataset as ODCDataset
 import datacube.storage._read  # TODO: Remove hack to avoid circular import ImportError
 import numpy as np
-from xarray import Dataset
 from s2cloudless import S2PixelCloudDetector
-from ...utils.array_to_geotiff import array_to_geotiff_multiband
-from ...utils.logger import create_logger
+
+from cfsi.scripts.index.s2cloudless_index import S2CloudlessIndexer
+from cfsi.utils.array_to_geotiff import array_to_geotiff_multiband
+from cfsi.utils.load_datasets import dataset_from_odcdataset
+from cfsi.utils.logger import create_logger
 from osgeo import gdal
 gdal.UseExceptions()
 
-
-CLOUD_THRESHOLD = 0.3  # cloud threshold value for s2cloudless
-MAX_CLOUD_THRESHOLD = 94.0  # maximum cloudiness percentage in metadata
-MIN_CLOUD_THRESHOLD = 1.0  # minimum cloudiness percentage in metadata
+# TODO: define in a separate config file
+CLOUD_THRESHOLD = 0.3           # cloud threshold value for s2cloudless
+MAX_CLOUD_THRESHOLD = 100.0     # maximum cloudiness percentage in metadata
+MIN_CLOUD_THRESHOLD = 0.0       # minimum cloudiness percentage in metadata
 CLOUD_PROJECTION_DISTANCE = 30  # maximum distance to search for cloud shadows
-DARK_PIXEL_THRESHOLD = 0.15
-WRITE_RGB = True
+DARK_PIXEL_THRESHOLD = 0.15     # max band 8 value for pixel to be considered dark
+WRITE_RGB = True                # write L1C rgb for validating results
 
-try:
-    OUTPUT_PATH = Path(environ["CFSI_OUTPUT_DIR"])
-    if not OUTPUT_PATH.exists():
-        raise Exception("Error in env. variable OUTPUT_PATH: directory does not exist")
-except KeyError:
-    OUTPUT_PATH = Path("/home/mikael/tmp/cfsi_output")
+OUTPUT_PATH = Path(os.environ["CFSI_CONTAINER_OUTPUT"])  # TODO: write to S3
+OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 
-LOGGER = create_logger("s2cloudless", level=logging.DEBUG)
+LOGGER = create_logger("s2cloudless", level=DEBUG)
 
 
 def process_dataset(dataset: ODCDataset) -> (np.ndarray, np.ndarray):
@@ -46,36 +44,19 @@ def process_dataset(dataset: ODCDataset) -> (np.ndarray, np.ndarray):
 
     s3_key = tile_props["s3_key"]
     LOGGER.info(f"Processing {s3_key}\t{metadata_cloud_percentage}% cloudy")
-    ds = load_datasets([dataset], app_name=f"s2cloudless-processor_{s3_key}")
+    ds = dataset_from_odcdataset("s2a_level1c_granule", dataset)
 
     LOGGER.info("Fetching data to array")
     array = np.moveaxis(ds.to_array().values.astype("float64") / 10000, 0, -1)
+    LOGGER.debug(f"Loaded array shaped {array.shape} into memory, size {array.nbytes} bytes")
     LOGGER.info("Generating cloud masks")
-    cloud_masks = generate_cloud_masks(array)  # TODO: evaluate performance
+    cloud_masks = generate_cloud_masks(array)
     LOGGER.info("Generating shadow masks")
     # TODO: evaluate performance
     shadow_masks = generate_cloud_shadow_masks(array[:, :, :, 7], cloud_masks, tile_props["mean_sun_azimuth"])
 
     LOGGER.info("Mask generation done")
     return cloud_masks, shadow_masks
-
-
-def load_datasets(
-        datasets: Union[List[ODCDataset], ODCDataset],
-        measurements: List[str] = None,
-        app_name: str = "s2cloudless") -> Dataset:
-    """ Loads a xarray.Dataset datacube from an ODC dataset """
-    if not isinstance(datasets, list):
-        datasets = [datasets]
-    dc = datacube.Datacube(app=app_name)
-    ds = dc.load(product="s2a_level1c_granule",
-                 dask_chunks={},
-                 measurements=measurements,
-                 output_crs="epsg:32635",  # TODO: read from dataset
-                 resolution=(-10, 10),  # TODO: read from dataset
-                 crs="epsg:32635",  # TODO: read from dataset
-                 datasets=datasets)
-    return ds
 
 
 def generate_cloud_masks(array: np.ndarray) -> np.ndarray:
@@ -98,8 +79,11 @@ def generate_cloud_shadow_masks(nir_array: np.ndarray,
 
     new_rows = np.zeros((abs(int(y)), cols))
     new_cols = np.zeros((rows, abs(int(x))))
+    # TODO: fix issues with projection direction
+    # DEBUG - Mean sun azimuth: 133.129531680158. Shifting shadow masks by 21 rows, -20 cols
+    # should shift towards top-left, i.e. -21 rows, -20 cols
     LOGGER.debug(f"Mean sun azimuth: {mean_sun_azimuth}. " +
-                 f"Shifting shadow masks by {int(new_rows)} rows, {int(new_cols)} cols")
+                 f"Shifting shadow masks by {int(y)} rows, {int(x)} cols")
     new_rows[:] = 1
     new_cols[:] = 1
 
@@ -121,36 +105,62 @@ def generate_cloud_shadow_masks(nir_array: np.ndarray,
 
 def write_to_tif(
         dataset: ODCDataset,
-        data: List[np.ndarray],
+        data: Union[List[np.ndarray], np.ndarray, Dict[str, np.ndarray]],
+        product_name: str = "",
         data_type: int = gdal.GDT_Byte,
-        file_suffix: str = "s2cloudless"):
-    """ Write a set of ndarrays to .tif """
+        ) -> List[Path]:
+    """ Write numpy ndarray(s) to .tif file(s).
+     :param dataset: ODC Dataset being written,
+     :param data: data to write in numpy ndarray(s), or output_name: ndarray dict,
+     :param product_name: write .tif(s) to own subdirectory with product name suffix,
+     :param data_type: GDAL data type to use when writing file,
+     :return: list of Paths of written files """
+
+    if isinstance(data, np.ndarray):
+        data = [data]
     tile_props = dataset.metadata_doc["properties"]
     tile_path = Path(tile_props["s3_key"])
     tile_id = tile_props["tile_id"]
-    output_dir = Path(OUTPUT_PATH / tile_path)
+    output_dir = Path(OUTPUT_PATH / tile_path).joinpath(product_name)  # TODO: write to S3
+    LOGGER.debug(f"Trying to create dir {output_dir}")
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    ds = load_datasets(dataset, app_name=f"s2cloudless-writer_{tile_path}")
+    ds = dataset_from_odcdataset("s2a_level1c_granule", dataset)
     geo_transform = ds.geobox.transform.to_gdal()
     projection = ds.geobox.crs.wkt
-    array_to_geotiff_multiband(
-        str(Path(output_dir / f"{tile_id}_{file_suffix}.tif")),
-        data,
-        geo_transform,
-        projection,
-        data_type=data_type)
+
+    if not isinstance(data, dict):  # write all to single file
+        output_path = output_dir.joinpath(f"{tile_id}.tif")
+        array_to_geotiff_multiband(
+            str(output_path),
+            data,
+            geo_transform,
+            projection,
+            data_type=data_type)
+        return [output_path]
+
+    output_paths = []
+    for output_name in data:
+        output_path = output_dir.joinpath(f"{tile_id}_{output_name}.tif")
+        array_to_geotiff_multiband(
+            str(output_path),
+            [data[output_name]],
+            geo_transform,
+            projection,
+            data_type=data_type)
+        output_paths.append(output_path)
+    return output_paths
 
 
 def write_dataset_rgb(dataset: ODCDataset):
     """ Writes a ODC dataset to a rgb .tif file """
     rgb_bands = ['B02', 'B03', 'B04']
-    rgb_ds = load_datasets(dataset, measurements=rgb_bands, app_name=f"s2cloudless-writer_rgb")
+    rgb_ds = dataset_from_odcdataset("s2a_l1c_granule", dataset, measurements=rgb_bands)
     write_to_tif(
         dataset,
         [np.squeeze(rgb_ds[band].values / 10000) for band in rgb_ds.data_vars],
         data_type=gdal.GDT_Float32,
-        file_suffix="rgb")
+        product_name="rgb")
 
 
 def main():
@@ -159,16 +169,21 @@ def main():
     l1c_datasets = dc.find_datasets(product="s2a_level1c_granule")
 
     for dataset in l1c_datasets:
-        try:
-            masks = list(process_dataset(dataset))
-        except ValueError:  # TODO: catch and handle custom exceptions
-            continue
+        LOGGER.info(f"Processing {dataset}")
+        mask_arrays = process_dataset(dataset)
+        masks = {"clouds": mask_arrays[0],
+                 "shadows": mask_arrays[1]}
+
         LOGGER.info("Writing output")
-        write_to_tif(dataset, masks)
+        output_mask_files = write_to_tif(dataset, masks, "s2cloudless")
+        output_masks = {
+            "cloud_mask": output_mask_files[0],
+            "shadow_mask": output_mask_files[1]}
         if WRITE_RGB:
             LOGGER.info(f"Writing rgb output")
             write_dataset_rgb(dataset)  # TODO: write corresponding L2A dataset
         LOGGER.info("Finished processing")
+        S2CloudlessIndexer().index({dataset: output_masks})
         break
 
 

@@ -9,6 +9,7 @@ import numpy as np
 from s2cloudless import S2PixelCloudDetector
 
 from cfsi.scripts.index.s2cloudless_index import S2CloudlessIndexer
+from cfsi.scripts.mosaic.mosaic import mosaic_from_mask_datasets
 from cfsi.utils.array_to_geotiff import array_to_geotiff_multiband
 from cfsi.utils.load_datasets import dataset_from_odcdataset
 from cfsi.utils.logger import create_logger
@@ -21,7 +22,7 @@ MAX_CLOUD_THRESHOLD = 100.0     # maximum cloudiness percentage in metadata
 MIN_CLOUD_THRESHOLD = 0.0       # minimum cloudiness percentage in metadata
 CLOUD_PROJECTION_DISTANCE = 30  # maximum distance to search for cloud shadows
 DARK_PIXEL_THRESHOLD = 0.15     # max band 8 value for pixel to be considered dark
-WRITE_RGB = True                # write L1C rgb for validating results
+WRITE_RGB = False               # write L1C rgb for validating results
 
 OUTPUT_PATH = Path(os.environ["CFSI_CONTAINER_OUTPUT"])  # TODO: write to S3
 OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
@@ -167,7 +168,9 @@ def main():
     LOGGER.info("Starting")
     dc = datacube.Datacube(app="s2cloudless-main")
     l1c_datasets = dc.find_datasets(product="s2a_level1c_granule")
+    indexed_masks: List[ODCDataset] = []
 
+    i = 0
     for dataset in l1c_datasets:
         LOGGER.info(f"Processing {dataset}")
         mask_arrays = process_dataset(dataset)
@@ -182,9 +185,14 @@ def main():
         if WRITE_RGB:
             LOGGER.info(f"Writing rgb output")
             write_dataset_rgb(dataset)  # TODO: write corresponding L2A dataset
-        LOGGER.info("Finished processing")
-        S2CloudlessIndexer().index({dataset: output_masks})
-        break
+        LOGGER.info(f"Finished processing {dataset}, indexing output")
+        indexed_masks += S2CloudlessIndexer().index({dataset: output_masks})
+        i += 1
+        if i > 2:  # TODO: remove
+            break
+
+    LOGGER.info(f"Creating mosaic from {len(indexed_masks)} masks")
+    mosaic_from_mask_datasets(indexed_masks)
 
 
 if __name__ == "__main__":

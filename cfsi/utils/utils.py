@@ -11,8 +11,14 @@ def container_path_to_global_path(*file_paths: Path) -> List[Path]:
     container_output_path = os.environ["CFSI_CONTAINER_OUTPUT"]
     external_output_path = os.environ["CFSI_OUTPUT_DIR"]
     for file_path in file_paths:
-        if str(file_path).startswith(container_output_path):
-            res.append(Path(str(file_path).replace(container_output_path, external_output_path)))
+        file_string = str(file_path)
+        protocol = ""
+        if file_string.startswith("file:/"):  # TODO: more protocols
+            protocol = "file:/"
+            file_string = file_string[len(protocol):]
+        if file_string.startswith(container_output_path):
+            res.append(Path(protocol + file_string.replace(
+                container_output_path, external_output_path)))
         else:
             res.append(file_path)
 

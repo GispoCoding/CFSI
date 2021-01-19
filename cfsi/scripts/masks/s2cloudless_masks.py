@@ -171,7 +171,7 @@ def main():
     indexed_masks: List[ODCDataset] = []
 
     i = 0
-    max_iterations = 2
+    max_iterations = 200
     for dataset in l1c_datasets:
         LOGGER.debug(f"Iteration {i}/{max_iterations}")
         LOGGER.info(f"Processing {dataset}")
@@ -191,6 +191,7 @@ def main():
         indexed_masks += S2CloudlessIndexer().index({dataset: output_masks})
         i += 1
         if i >= max_iterations:  # TODO: remove
+            LOGGER.warning(f"Mask generation reached maximum iterations count {max_iterations}")
             break
 
     LOGGER.info(f"Creating mosaic from {len(indexed_masks)} masks")

@@ -5,13 +5,13 @@ services:
         environment:
             - AWS_ACCESS_KEY_ID
             - AWS_SECRET_ACCESS_KEY
-            - CFSI_LOG_DIR=/app/log
-            - CFSI_OUTPUT_DIR=/output
+            - CFSI_CONTAINER_OUTPUT=/output
+            - CFSI_OUTPUT_PROTOCOL=FILE
+            - CFSI_OUTPUT_DIR
         depends_on:
             - db
         volumes:
-            - ./output:/output
-            - ./log:/app/log
+            - ${CFSI_OUTPUT_DIR}:/output
     db:
         image: postgres:13
         restart: always

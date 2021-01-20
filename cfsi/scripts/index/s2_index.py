@@ -19,33 +19,11 @@ from datacube.utils import changes
 
 from cfsi.utils.logger import create_logger
 
+from cfsi.constants import (GUARDIAN, L1C_BUCKET, L2A_BUCKET,
+                            S2_MEASUREMENTS, S2_PRODUCT_NAMES)
+
 LOGGER = create_logger("s2-index")
-GUARDIAN = "GUARDIAN_QUEUE_EMPTY"
-
-L1C_BUCKET = "sentinel-s2-l1c"
-L2A_BUCKET = "sentinel-s2-l2a"
 INDEX_BUCKETS = [L1C_BUCKET, L2A_BUCKET]
-
-L1C_MEASUREMENTS = [
-    "B01_60m", "B02_10m", "B03_10m", "B04_10m", "B05_20m",
-    "B06_20m", "B07_20m", "B08_10m", "B09_60m", "B8A_20m",
-    "B10_60m", "B11_20m", "B12_20m"
-]
-L2A_MEASUREMENTS = [
-    "B02_20m", "B02_60m", "B03_20m", "B03_60m", "B04_20m",
-    "B04_60m", "B05_60m", "B06_60m", "B07_60m", "B08_20m",
-    "B08_60m", "B8A_60m", "B11_60m", "B12_60m", "SCL_20m"
-] + L1C_MEASUREMENTS
-L2A_MEASUREMENTS.remove("B10_60m")
-
-MEASUREMENTS = {
-    L1C_BUCKET: L1C_MEASUREMENTS,
-    L2A_BUCKET: L2A_MEASUREMENTS,
-}
-PRODUCT_NAMES = {
-    L1C_BUCKET: "s2a_level1c_granule",
-    L2A_BUCKET: "s2a_sen2cor_granule",
-}
 
 
 def get_s3_uri(bucket_name: str, key: str) -> str:
@@ -93,7 +71,7 @@ def generate_eo3_dataset_doc(bucket_name: str, uri: str, data: ElementTree) -> d
         "id": md5(uri.encode("utf-8")).hexdigest(),
         "$schema": "https://schemas.opendatacube.org/dataset",
         "product": {
-            "name": PRODUCT_NAMES[bucket_name],
+            "name": S2_PRODUCT_NAMES[bucket_name],
         },
         "crs": tile_metadata.crs_code,
         "grids": {
@@ -133,7 +111,7 @@ def generate_eo3_dataset_doc(bucket_name: str, uri: str, data: ElementTree) -> d
 def generate_measurements(bucket_name: str) -> Dict:
     """ Generates a measurement dict for eo3 document """
     res = {}
-    for measurement in MEASUREMENTS[bucket_name]:
+    for measurement in S2_MEASUREMENTS[bucket_name]:
         band, resolution = measurement.split("_")
         if bucket_name == L2A_BUCKET:
             file_name = f"R{resolution}/{band}"

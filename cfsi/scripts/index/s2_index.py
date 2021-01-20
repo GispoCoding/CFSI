@@ -45,6 +45,7 @@ class S2Indexer(ODCIndexer):
         bucket = s3.Bucket(bucket_name)
         queue = Queue()
         prefixes = self.generate_s3_prefixes()
+        LOGGER.info(f"Fetching metadata for s3://{bucket_name}/{prefixes[0][:18]}/*")
         for prefix in prefixes:
             for obj in bucket.objects.filter(Prefix=prefix, RequestPayer="requester"):
                 if obj.key.endswith("metadata.xml"):
@@ -76,9 +77,15 @@ class S2Indexer(ODCIndexer):
                 obj = self.get_object_from_s3(bucket_name, key, RequestPayer="requester")
                 data = self.s3obj_to_etree(obj)
                 uri = self.generate_s3_uri(bucket_name, key)
-                dataset_doc = self.generate_eo3_dataset_doc(bucket_name, uri, data)
-                self.add_dataset(dataset_doc, uri=uri)
-                queue.task_done()
+                id_: str = md5(uri.encode("utf-8")).hexdigest()
+
+                if self.dataset_exists(id_):
+                    LOGGER.info(f"Dataset {key} with id {id_} already indexed, skipping")
+                    queue.task_done()
+                else:
+                    dataset_doc = self.generate_eo3_dataset_doc(bucket_name, uri, data)
+                    self.add_dataset(dataset_doc, uri=uri)
+                    queue.task_done()
             except Empty:
                 break
             except EOFError:

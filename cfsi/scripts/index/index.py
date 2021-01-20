@@ -1,5 +1,4 @@
 import os
-from logging import DEBUG
 from pathlib import Path
 from typing import Dict, Union
 from types import SimpleNamespace
@@ -17,7 +16,7 @@ from datacube.utils.changes import DocumentMismatchError
 from cfsi.utils.logger import create_logger
 from cfsi.utils.utils import swap_s2_bucket_names
 
-LOGGER = create_logger("ODCIndexer", level=DEBUG)
+LOGGER = create_logger("ODCIndexer")
 
 
 class ODCIndexer:
@@ -35,7 +34,7 @@ class ODCIndexer:
         """ Adds dataset to dcIndex """
         if not uri:
             uri = doc["uri"]
-        LOGGER.info(f"Indexing {uri}")
+        LOGGER.debug(f"Indexing {uri}")
         index = self.dc.index
         resolver = Doc2Dataset(index, **kwargs)
         dataset, err = resolver(doc, uri)
@@ -51,6 +50,13 @@ class ODCIndexer:
             pass
 
         return dataset, err
+
+    def dataset_exists(self, id_: str) -> bool:
+        """ Check if dataset URI is already indexed """
+        index = self.dc.index
+        if not index.datasets.get(id_):
+            return False
+        return True
 
     @staticmethod
     def generate_s3_uri(bucket_name: str, key: str) -> str:

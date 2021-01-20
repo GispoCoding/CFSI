@@ -4,5 +4,4 @@ gdal==3.2.1
 s2cloudless~=1.4.0
 numpy~=1.19.5
 xarray~=0.16.2
-yaml~=0.2.5
 pyyaml~=5.3.1

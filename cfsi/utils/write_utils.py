@@ -1,23 +1,23 @@
 import os
+from datetime import date
 from pathlib import Path
 from typing import List, Tuple, Union, Dict
 import numpy as np
 from osgeo import gdal
+import xarray as xa
 
 from cfsi.utils.logger import create_logger
 from cfsi.utils.load_datasets import dataset_from_odcdataset
 from datacube.model import Dataset as ODCDataset
 
 gdal.UseExceptions()
-LOGGER = create_logger("array_to_geotiff")
+LOGGER = create_logger("write_utils")
 
 
-def odcdataset_to_tif(
-        dataset: ODCDataset,
-        data: Union[List[np.ndarray], Dict[str, np.ndarray]],
-        product_name: str = "",
-        data_type: int = gdal.GDT_Float32,
-) -> List[Path]:
+def odcdataset_to_tif(dataset: ODCDataset,
+                      data: Union[List[np.ndarray], Dict[str, np.ndarray]],
+                      product_name: str = "",
+                      data_type: int = gdal.GDT_Float32) -> List[Path]:
     """ Write a ODCDataset to .tif file(s).
      :param dataset: ODC Dataset being written
      :param data: data to write in numpy ndarray,
@@ -52,12 +52,19 @@ def odcdataset_to_single_tif(dataset: ODCDataset,
 def gdal_params_for_odcdataset(dataset: ODCDataset):
     """ Gets transformation and projection info for writing ODCDataset with GDAL """
     ds = dataset_from_odcdataset("s2a_level1c_granule", dataset)
-    geo_transform = ds.geobox.transform.to_gdal()
-    projection = ds.geobox.crs.wkt
+    return gdal_params_for_xadataset(ds)
+
+
+def gdal_params_for_xadataset(dataset: xa.Dataset):
+    """ Gets transformation and projection info for writing Datacube with GDAL """
+    geo_transform = dataset.geobox.transform.to_gdal()
+    projection = dataset.geobox.crs.wkt
     return geo_transform, projection
 
 
-def generate_s2_file_output_path(dataset: ODCDataset, product_name: str = "", band_name: str = "") -> Path:
+def generate_s2_file_output_path(dataset: ODCDataset,
+                                 product_name: str = "",
+                                 band_name: str = "") -> Path:
     """ Generates a output path for writing a ODCDataset to a .tif file.
      :param dataset: ODCDataset being written
      :param product_name: product name being written. each product goes to its own sub-directory, optional
@@ -103,8 +110,9 @@ def odcdataset_to_multiple_tif(dataset: ODCDataset,
     return output_paths
 
 
-def write_dataset_rgb(dataset: ODCDataset):
-    """ Writes a ODC dataset to a rgb .tif file """
+def write_l1c_dataset_rgb(dataset: ODCDataset):
+    """ Writes a ODC S2 L1C dataset to a rgb .tif file """
+    LOGGER.info(f"Writing RGB output for dataset {dataset}")
     rgb_bands = ['B02', 'B03', 'B04']
     rgb_ds = dataset_from_odcdataset("s2a_l1c_granule", dataset, measurements=rgb_bands)
     data = [np.squeeze(rgb_ds[band].values / 10000) for band in rgb_ds.data_vars]
@@ -121,7 +129,7 @@ def array_to_geotiff(file_path: Path,
     file_name : output geotiff file path including extension
     data : list of numpy arrays
     geo_transform : Geotransform for output raster; e.g.
-    "(upleft_x, x_size, x_rotation, upleft_y, y_rotation, y_size)"
+    "(up_left_x, x_size, x_rotation, up_left_y, y_rotation, y_size)"
     projection : WKT projection for output raster
     nodata_val : Value to convert to nodata in the output raster; default 0
     data_type : gdal data_type object, optional
@@ -141,4 +149,18 @@ def array_to_geotiff(file_path: Path,
         band = dataset.GetRasterBand(idx + 1)
         band.WriteArray(d)
         band.SetNoDataValue(nodata_val)
+
+    # noinspection PyUnusedLocal
     dataset = None  # Close %%file
+
+
+def generate_mosaic_output_path(mosaic_name: str) -> Path:
+    """ Generates an output Path for a new mosaic """
+    base_path = Path(os.environ["CFSI_OUTPUT_DIR"])
+    mosaic_dir = Path(base_path / "mosaics")
+    i = 0
+    file_path = Path(mosaic_dir / f"{date.today()}_{mosaic_name}_{i}.tif")
+    while file_path.exists():
+        i += 1
+        file_path = Path(mosaic_dir / f"{date.today()}_{mosaic_name}_{i}.tif")
+    return file_path

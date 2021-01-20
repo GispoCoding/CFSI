@@ -22,5 +22,4 @@ COPY cfsi cfsi
 
 USER app
 CMD cfsi/utils/wait-for-it.sh db:5432 -- cfsi/scripts/setup/setup_odc.sh \
-    && python3 -m cfsi.scripts.index.s2_index \
-    && python3 -m cfsi.scripts.masks.s2cloudless_masks
+    && python3 -m cfsi.scripts.process.s2cloudless_mosaic

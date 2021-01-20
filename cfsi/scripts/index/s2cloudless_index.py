@@ -8,7 +8,7 @@ from datacube.model import Dataset as ODCDataset
 from datacube.utils import changes
 from datacube.utils.changes import DocumentMismatchError
 
-from cfsi.scripts.index.index import ODCIndexer  # TODO: add to init.py
+from cfsi.scripts.index import ODCIndexer
 from cfsi.utils.logger import create_logger
 from cfsi.utils.utils import container_path_to_global_path  # TODO: add to init.py
 
@@ -51,7 +51,7 @@ class S2CloudlessIndexer(ODCIndexer):
 
         LOGGER.debug(f"Getting L1C metadata.xml object: {l1c_metadata_uri}")
         l1c_metadata_doc = self.s3obj_to_etree(self.get_object_from_s3_uri(
-            l1c_metadata_uri, ResponseCacheControl="no-cache", RequestPayer="requester"))
+            l1c_metadata_uri, RequestPayer="requester"))
         tile_metadata = self.read_s2_tile_metadata(l1c_metadata_doc)
         grids = self.read_s2_grid_metadata(l1c_metadata_doc)
 

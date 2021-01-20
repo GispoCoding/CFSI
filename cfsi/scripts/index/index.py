@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 from uuid import UUID
 from xml.etree import ElementTree
 
+import boto3
 from boto3 import Session
 from datacube import Datacube
 from datacube.model import Dataset as ODCDataset
@@ -30,15 +31,15 @@ class ODCIndexer:
         )
 
     @staticmethod
-    def get_s3_uri(bucket_name: str, key: str) -> str:
+    def generate_s3_uri(bucket_name: str, key: str) -> str:
         """ Gets a URI based on S3 bucket name and key """
         key_path = Path(key)
         uri = "s3://" + str(Path(bucket_name / key_path.parent))
         return uri
 
     @staticmethod
-    def absolutify_s3_paths(doc: Dict, uri: str) -> Dict:
-        """ TODO: desc """
+    def relative_s3_keys_to_absolute(doc: Dict, uri: str) -> Dict:
+        """ Convert S3 object paths in eo3 doc from relative to key values """
         measurements = doc["measurements"]
         for measurement in measurements:
             measurement_key = uri + "/" + measurements[measurement]["path"]
@@ -47,10 +48,14 @@ class ODCIndexer:
 
     def get_object_from_s3_uri(self, uri: str, **kwargs) -> ElementTree:
         """ Fetches object from S3 URI """
-        s3 = self.session.resource("s3")
         parsed_url = urlparse(uri)
         bucket_name = parsed_url.netloc
         key = parsed_url.path[1:]  # skip leading /
+        return self.get_object_from_s3(bucket_name, key, **kwargs)
+
+    def get_object_from_s3(self, bucket_name: str, key: str, **kwargs):
+        """ Gets an object from S3 bucket with key """
+        s3 = self.session.resource("s3")
         return s3.Object(bucket_name, key).get(**kwargs)
 
     @staticmethod
@@ -107,6 +112,9 @@ class ODCIndexer:
     def odcdataset_id_from_uri(self, uri: str, product: str = None) -> UUID:
         """ Returns the id of a ODCDataset that matches the given URI """
         query = dict(product=product, uri=uri, limit=1)
-        dataset: ODCDataset = [odc_ds for odc_ds in self.dc.index.datasets.search(**query)][0]
-        LOGGER.debug(f"Found dataset with URI {dataset.uris[0]} matching arg URI {uri}")
+        try:
+            dataset: ODCDataset = [odc_ds for odc_ds in self.dc.index.datasets.search(**query)][0]
+        except IndexError:
+            LOGGER.warning(f"Couldn't find ODC Dataset for product {product} matching URI {uri}")
+            raise  # TODO: custom exception
         return dataset.id

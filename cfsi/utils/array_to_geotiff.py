@@ -1,10 +1,15 @@
+from pathlib import Path
 from typing import List, Tuple
 import numpy as np
 from osgeo import gdal
+
+from cfsi.utils.logger import create_logger
+
 gdal.UseExceptions()
+LOGGER = create_logger("array_to_geotiff")
 
 
-def array_to_geotiff_multiband(file_name: str,
+def array_to_geotiff_multiband(file_path: Path,
                                data: List[np.ndarray],
                                geo_transform: Tuple,
                                projection: str,
@@ -22,7 +27,10 @@ def array_to_geotiff_multiband(file_name: str,
         useful when exporting an array of float or integer values. """
     driver = gdal.GetDriverByName('GTiff')
     rows, cols = data[0].shape  # Create raster of given size and projection
-    dataset = driver.Create(file_name, cols, rows, len(data), data_type)
+    if not file_path.parent.exists():
+        LOGGER.info(f"Creating output directory {file_path}")
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+    dataset = driver.Create(str(file_path), cols, rows, len(data), data_type)
     dataset.SetGeoTransform(geo_transform)
     dataset.SetProjection(projection)
     for idx, d in enumerate(data):

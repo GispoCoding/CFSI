@@ -133,7 +133,7 @@ def odcdataset_to_single_tif(dataset: ODCDataset,
      :param data_type: GDAL data type, optional """
     geo_transform, projection = gdal_params_for_odcdataset(dataset)
     output_dir = generate_s2_file_output_path(dataset, product_name)
-    array_to_geotiff_multiband(str(output_dir), data, geo_transform, projection, data_type=data_type)
+    array_to_geotiff_multiband(output_dir, data, geo_transform, projection, data_type=data_type)
     return output_dir
 
 
@@ -184,7 +184,7 @@ def odcdataset_to_multiple_tif(dataset: ODCDataset,
     for band_name in data:
         output_path = generate_s2_file_output_path(dataset, product_name, band_name)
         array_to_geotiff_multiband(
-            str(output_path),
+            output_path,
             [data[band_name]],
             geo_transform,
             projection,
@@ -255,7 +255,7 @@ def main():
     geo_transform = mosaic_ds.geobox.transform.to_gdal()
     projection = mosaic_ds.geobox.crs.wkt
     mosaic_data: List[np.ndarray] = [np.squeeze(mosaic_ds[band].values) for band in mosaic_ds.data_vars]
-    array_to_geotiff_multiband(str(mosaic_filepath),
+    array_to_geotiff_multiband(mosaic_filepath,
                                mosaic_data,
                                geo_transform,
                                projection)

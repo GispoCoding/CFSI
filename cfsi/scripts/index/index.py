@@ -7,7 +7,6 @@ from urllib.parse import urlparse
 from uuid import UUID
 from xml.etree import ElementTree
 
-import boto3
 from boto3 import Session
 from datacube import Datacube
 from datacube.index.hl import Doc2Dataset

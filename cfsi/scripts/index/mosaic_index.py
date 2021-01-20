@@ -25,7 +25,7 @@ class MosaicIndexer(ODCIndexer):
             LOGGER.info(f"Indexed cloudless mosaic {dataset}")
 
     @staticmethod
-    def generate_eo3_dataset_doc(self, mosaic_ds: xa.Dataset, file_path: Path) -> Dict:
+    def generate_eo3_dataset_doc(mosaic_ds: xa.Dataset, file_path: Path) -> Dict:
         """ Generates and returns a cloudless mosaic eo3 metadata document """
         with rasterio.open(str(file_path)) as src:
             transform = src.meta["transform"]

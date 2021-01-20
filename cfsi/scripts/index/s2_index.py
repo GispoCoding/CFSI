@@ -2,14 +2,10 @@ from logging import DEBUG
 from queue import Queue
 from pathlib import Path
 from queue import Empty
-from typing import Dict, Union, List
+from typing import Dict, List
 
 from xml.etree import ElementTree
 from hashlib import md5
-
-from datacube.index.hl import Doc2Dataset
-from datacube.model import Dataset as ODCDataset
-from datacube.utils import changes
 
 from cfsi import config
 from cfsi.scripts.index import ODCIndexer

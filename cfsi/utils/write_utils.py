@@ -156,8 +156,8 @@ def array_to_geotiff(file_path: Path,
 
 def generate_mosaic_output_path(mosaic_name: str) -> Path:
     """ Generates an output Path for a new mosaic """
-    base_path = Path(os.environ["CFSI_OUTPUT_DIR"])
-    mosaic_dir = Path(base_path / "mosaics")
+    base_output_path = Path(os.environ["CFSI_CONTAINER_DIR"])
+    mosaic_dir = Path(base_output_path / "mosaics")
     i = 0
     file_path = Path(mosaic_dir / f"{date.today()}_{mosaic_name}_{i}.tif")
     while file_path.exists():

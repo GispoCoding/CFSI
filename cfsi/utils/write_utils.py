@@ -137,7 +137,7 @@ def array_to_geotiff(file_path: Path,
         useful when exporting an array of float or integer values. """
     driver = gdal.GetDriverByName('GTiff')
     if not file_path.parent.exists():
-        LOGGER.info(f"Creating output directory {file_path}")
+        LOGGER.info(f"Creating output directory {file_path.parent}")
         file_path.parent.mkdir(parents=True, exist_ok=True)
     if isinstance(data, np.ndarray):
         data = [data]

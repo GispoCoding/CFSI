@@ -173,7 +173,7 @@ def main():
     i = 1
     max_iterations = 200
     if len(l1c_datasets) < max_iterations:
-        max_iterations = l1c_datasets
+        max_iterations = len(l1c_datasets)
 
     for dataset in l1c_datasets:
         LOGGER.debug(f"Iteration {i}/{max_iterations}")

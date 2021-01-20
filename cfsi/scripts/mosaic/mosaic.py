@@ -1,47 +1,34 @@
 from logging import DEBUG
 from typing import List
-from uuid import UUID
 
 from datacube.model import Dataset as ODCDataset
 import numpy as np
 import xarray as xa
 
+from cfsi import config
 from cfsi.utils.load_datasets import dataset_from_odcdataset
 from cfsi.utils.logger import create_logger
 
 LOGGER = create_logger("s2cloudless_mosaic", level=DEBUG)
 
-OUTPUT_BANDS = ["B02_10m", "B03_10m", "B04_10m"]
-RECENTNESS = True
+# TODO: option to write latest image as reference
+# TODO: write output to correct path
 
 
 def mosaic_from_mask_datasets(mask_datasets: List[ODCDataset]) -> xa.Dataset:
     """ Creates a cloudless mosaic from cloud/shadow mask ODCDatasets
     :param mask_datasets: List of ODCDatasets with cloud_mask, shadow_mask measurements """
-    mask_dict = {}
-    LOGGER.debug(f"Using the following {len(mask_datasets)} masks for mosaic generation")
-    for dataset in mask_datasets:
-        LOGGER.debug(f"{type(dataset)}: {dataset}")
-        mask_dict[dataset.id] = dataset.metadata_doc["properties"]["l2a_dataset_id"]
+    ds = setup_mask_datacube(mask_datasets)
+    ds = ds.where((ds.cloud_mask == 0) & (ds.shadow_mask == 0), 0)
 
-    LOGGER.debug("Setting up mosaic data cube")
-    mask_dataset_ids = list(mask_dict.keys())
-    l2a_dataset_ids = list(mask_dict.values())
-
-    ds_l2a = dataset_from_odcdataset("s2a_sen2cor_granule", ids=l2a_dataset_ids)
-    mask_product_name = mask_datasets[0].type.name
-    ds_mask = dataset_from_odcdataset(mask_product_name, ids=mask_dataset_ids)
-    ds_merged = ds_l2a.merge(ds_mask)
-    ds_merged = ds_merged.where((ds_merged.cloud_mask == 0) & (ds_merged.shadow_mask == 0), 0)
-
-    recentness: int = 1  # 0: don't check, 1: check once, 2: check for every band
-
-    LOGGER.debug("Entering main mosaic loop")
+    ds_out: xa.Dataset = ds.copy(deep=True).isel(time=-1)
+    recentness: int = config.mosaic.recentness
+    output_bands = config.mosaic.output_bands
     i = 1
-    ds_out: xa.Dataset = ds_merged.copy(deep=True).isel(time=-1)
-    for band in OUTPUT_BANDS:
-        LOGGER.info(f"Creating mosaic for band {band}, {i}/{len(OUTPUT_BANDS)}")
-        mosaic_da = mosaic_from_data_array(ds_merged[band], recentness=recentness)
+
+    for band in output_bands:
+        LOGGER.info(f"Creating mosaic for band {band}, {i}/{len(output_bands)}")
+        mosaic_da = mosaic_from_data_array(ds[band], recentness=recentness)
         ds_out[band].values = mosaic_da[band].values
         if recentness:
             if recentness == 1:
@@ -53,10 +40,26 @@ def mosaic_from_mask_datasets(mask_datasets: List[ODCDataset]) -> xa.Dataset:
                 LOGGER.info(f"Generated recentness array for band {band}")
         i += 1
 
-    LOGGER.info("Main mosaic loop finished")
+    LOGGER.info("Mosaic creation finished")
     ds_out = ds_out.drop_vars(key for key in ds_out.data_vars.keys()
-                              if key not in OUTPUT_BANDS and "recentness" not in key)
+                              if key not in output_bands and "recentness" not in key)
     return ds_out
+
+
+def setup_mask_datacube(mask_datasets: List[ODCDataset]) -> xa.Dataset:
+    """ Creates a datacube with L2A S2 bands and masks from given list """
+    mask_dict = {}
+    for dataset in mask_datasets:
+        LOGGER.debug(f"{type(dataset)}: {dataset}")
+        mask_dict[dataset.id] = dataset.metadata_doc["properties"]["l2a_dataset_id"]
+
+    mask_dataset_ids = list(mask_dict.keys())
+    l2a_dataset_ids = list(mask_dict.values())
+
+    ds_l2a = dataset_from_odcdataset("s2a_sen2cor_granule", ids=l2a_dataset_ids)
+    mask_product_name = mask_datasets[0].type.name
+    ds_mask = dataset_from_odcdataset(mask_product_name, ids=mask_dataset_ids)
+    return ds_l2a.merge(ds_mask)
 
 
 def mosaic_from_data_array(da_in: xa.DataArray, recentness: int = 0) -> xa.Dataset:

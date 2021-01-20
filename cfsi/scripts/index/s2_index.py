@@ -1,4 +1,3 @@
-from logging import DEBUG
 from queue import Queue
 from pathlib import Path
 from queue import Empty
@@ -13,7 +12,7 @@ from cfsi.utils.logger import create_logger
 
 from cfsi.constants import (GUARDIAN, L2A_BUCKET, S2_MEASUREMENTS, S2_PRODUCT_NAMES)
 
-LOGGER = create_logger("s2-index", level=DEBUG)
+LOGGER = create_logger("s2_index")
 
 
 class S2Indexer(ODCIndexer):

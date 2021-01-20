@@ -1,13 +1,13 @@
 import logging
 
 
-def create_logger(name: str = "cfsi-logger",
+def create_logger(name: str = "cfsi_logger",
                   level: int = logging.INFO) -> logging.Logger:
     """ Sets up and returns a logger.
      TODO: add rotating log file handler. """
     logger = logging.getLogger(name)
     logger.setLevel(level)
-    formatter = logging.Formatter('%(asctime)s - %(levelname)8s - %(name)24s - %(message)s')
+    formatter = logging.Formatter('%(asctime)s %(levelname)8s %(name)20s - %(message)s')
 
     if logger.handlers:
         return logger

@@ -1,5 +1,4 @@
 from hashlib import md5
-from logging import DEBUG
 from pathlib import Path
 from typing import Dict, List
 
@@ -9,7 +8,7 @@ from cfsi.scripts.index import ODCIndexer
 from cfsi.utils.logger import create_logger
 from cfsi.utils.utils import container_path_to_global_path  # TODO: add to init.py
 
-LOGGER = create_logger("s2cloudless-indexer", level=DEBUG)
+LOGGER = create_logger("s2cloudless_index")
 
 
 class S2CloudlessIndexer(ODCIndexer):

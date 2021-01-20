@@ -42,7 +42,7 @@ def main():
             LOGGER.info(f"S2Cloudless masks for dataset {dataset} already exist")
             continue
 
-        LOGGER.info(f"Processing {dataset}, iteration {i}/{max_iterations}")
+        LOGGER.info(f"Iteration {i}/{max_iterations}: {dataset}")
         mask_arrays = process_dataset(dataset)
 
         LOGGER.info("Writing masks to file")

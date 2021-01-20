@@ -8,7 +8,7 @@ import xarray as xa
 from cfsi.scripts.index import ODCIndexer
 from cfsi.utils.logger import create_logger
 
-LOGGER = create_logger("mosaic_index", level=10)
+LOGGER = create_logger("mosaic_index")
 
 
 class MosaicIndexer(ODCIndexer):
@@ -27,7 +27,7 @@ class MosaicIndexer(ODCIndexer):
     @staticmethod
     def generate_eo3_dataset_doc(mosaic_ds: xa.Dataset, file_path: Path) -> Dict:
         """ Generates and returns a cloudless mosaic eo3 metadata document """
-        with rasterio.open(str(file_path)) as src:
+        with rasterio.open(file_path) as src:
             transform = src.meta["transform"]
 
         uri = f"file:/{file_path}"
@@ -71,4 +71,5 @@ class MosaicIndexer(ODCIndexer):
                 "datetime": mosaic_ds.time.time.values,
             }
         }
+        LOGGER.debug(eo3)
         return eo3

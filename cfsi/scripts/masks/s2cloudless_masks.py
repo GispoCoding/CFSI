@@ -34,17 +34,11 @@ LOGGER = create_logger("s2cloudless", level=DEBUG)
 def process_dataset(dataset: ODCDataset) -> (np.ndarray, np.ndarray):
     """ Generate cloud and cloud shadow masks for a single datacube dataset """
     tile_props = dataset.metadata_doc["properties"]
-    metadata_cloud_percentage = tile_props["cloudy_pixel_percentage"]
-    if metadata_cloud_percentage > MAX_CLOUD_THRESHOLD:
-        LOGGER.info("Metadata cloud percentage greater than max threshold value: " +
-                    f"{MAX_CLOUD_THRESHOLD} < {metadata_cloud_percentage}")
-        raise ValueError  # TODO: add custom exception and catch
-    if metadata_cloud_percentage < MIN_CLOUD_THRESHOLD:
-        LOGGER.info("Metadata cloud percentage lower than min threshold value: " +
-                    f"{MIN_CLOUD_THRESHOLD} > {metadata_cloud_percentage}")
-        raise ValueError
-
     s3_key = tile_props["s3_key"]
+    metadata_cloud_percentage = cloud_percentage_inside_threshold(tile_props)
+    if isinstance(metadata_cloud_percentage, bool):
+        return
+
     LOGGER.info(f"Processing {s3_key}, {metadata_cloud_percentage}% cloudy")
     ds = dataset_from_odcdataset("s2a_level1c_granule", dataset)
 
@@ -59,6 +53,20 @@ def process_dataset(dataset: ODCDataset) -> (np.ndarray, np.ndarray):
 
     LOGGER.info("Mask generation done")
     return cloud_masks, shadow_masks
+
+
+def cloud_percentage_inside_threshold(tile_metadata: Dict) -> Union[float, bool]:
+    """ Checks if metadata cloud percentage of given dataset is within threshold """
+    metadata_cloud_percentage = tile_metadata["cloudy_pixel_percentage"]
+    if metadata_cloud_percentage > MAX_CLOUD_THRESHOLD:
+        LOGGER.info("Metadata cloud percentage greater than max threshold value: " +
+                    f"{MAX_CLOUD_THRESHOLD} < {metadata_cloud_percentage}")
+        return False
+    if metadata_cloud_percentage < MIN_CLOUD_THRESHOLD:
+        LOGGER.info("Metadata cloud percentage lower than min threshold value: " +
+                    f"{MIN_CLOUD_THRESHOLD} > {metadata_cloud_percentage}")
+        return False
+    return metadata_cloud_percentage
 
 
 def generate_cloud_masks(array: np.ndarray) -> np.ndarray:

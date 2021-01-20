@@ -77,7 +77,7 @@ class S2Indexer(ODCIndexer):
                 data = self.s3obj_to_etree(obj)
                 uri = self.generate_s3_uri(bucket_name, key)
                 dataset_doc = self.generate_eo3_dataset_doc(bucket_name, uri, data)
-                self.add_dataset(dataset_doc)
+                self.add_dataset(dataset_doc, uri=uri)
                 queue.task_done()
             except Empty:
                 break

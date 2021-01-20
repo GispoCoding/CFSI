@@ -31,9 +31,10 @@ class ODCIndexer:
             aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
             region_name='eu-central-1')
 
-    def add_dataset(self, doc: Dict, **kwargs) -> (ODCDataset, Union[Exception, None]):
+    def add_dataset(self, doc: Dict, uri: str = "", **kwargs) -> (ODCDataset, Union[Exception, None]):
         """ Adds dataset to dcIndex """
-        uri = doc["uri"]
+        if not uri:
+            uri = doc["uri"]
         LOGGER.info(f"Indexing {uri}")
         index = self.dc.index
         resolver = Doc2Dataset(index, **kwargs)

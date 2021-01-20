@@ -18,6 +18,7 @@ LOGGER = create_logger("s2cloudless_mosaic", level=DEBUG)
 def mosaic_from_mask_datasets(mask_datasets: List[ODCDataset]) -> xa.Dataset:
     """ Creates a cloudless mosaic from cloud/shadow mask ODCDatasets
     :param mask_datasets: List of ODCDatasets with cloud_mask, shadow_mask measurements """
+    LOGGER.info(f"Creating mosaic dataset from {len(mask_datasets)} masks")
     ds = setup_mask_datacube(mask_datasets)
     ds = ds.where((ds.cloud_mask == 0) & (ds.shadow_mask == 0), 0)
 

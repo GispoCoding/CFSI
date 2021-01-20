@@ -7,8 +7,10 @@ from osgeo import gdal
 import datacube
 from datacube.model import Dataset as ODCDataset
 import datacube.storage._read  # TODO: Remove hack to avoid circular import ImportError
+import xarray as xa
 
 from cfsi import config
+from cfsi.scripts.index.mosaic_index import MosaicIndexer
 from cfsi.scripts.masks.s2cloudless_masks import process_dataset
 from cfsi.utils.logger import create_logger
 from cfsi.scripts.index.s2cloudless_index import S2CloudlessIndexer
@@ -61,7 +63,10 @@ def main():
         LOGGER.warning("No new masks generated")
         return
 
-    mosaic_from_s2cloudless_datasets(indexed_masks)
+    mosaic_ds = mosaic_from_mask_datasets(indexed_masks)
+    output_mosaic_path = write_mosaic_to_file(mosaic_ds)
+    LOGGER.info("Indexing output mosaic")
+    MosaicIndexer().index(mosaic_ds, output_mosaic_path)
     exit(0)
 
 
@@ -92,10 +97,8 @@ def write_mask_arrays(dataset: ODCDataset,
     return output_masks
 
 
-def mosaic_from_s2cloudless_datasets(indexed_masks: List[ODCDataset]):
+def write_mosaic_to_file(mosaic_ds: xa.Dataset) -> Path:
     """ Creates a new mosaic from a list of S2Cloudless mask ODC Datasets """
-    LOGGER.info(f"Creating mosaic dataset from {len(indexed_masks)} masks")
-    mosaic_ds = mosaic_from_mask_datasets(indexed_masks)
     mosaic_filepath = generate_mosaic_output_path("s2cloudless")
 
     LOGGER.info("Constructing mosaic array")
@@ -106,6 +109,7 @@ def mosaic_from_s2cloudless_datasets(indexed_masks: List[ODCDataset]):
     LOGGER.info(f"Writing mosaic to {mosaic_filepath}")
     array_to_geotiff(mosaic_filepath, mosaic_data, geo_transform, projection)
     LOGGER.info(f"Generated mosaic {mosaic_filepath}")
+    return mosaic_filepath
 
 
 if __name__ == "__main__":

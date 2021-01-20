@@ -24,12 +24,20 @@ variable "AWS_SECRET_ACCESS_KEY" {
 
 resource "aws_vpc" "cfsi_vpc" {
   cidr_block = "172.27.0.0/16"
-  tags = { Name = "cfsi_vpc" }
+  tags = {
+    Customer = "UNCFSI"
+    Name = "cfsi_vpc"
+    Project = "UNCFSI"
+  }
 }
 
 resource "aws_internet_gateway" "cfsi_server_gateway" {
   vpc_id = aws_vpc.cfsi_vpc.id
-  tags = { Name = "cfsi_server_gateway" }
+  tags = {
+    Customer = "UNCFSI"
+    Name = "cfsi_server_gateway"
+    Project = "UNCFSI"
+  }
 }
 
 resource "aws_subnet" "cfsi_server_subnet" {
@@ -37,7 +45,11 @@ resource "aws_subnet" "cfsi_server_subnet" {
   cidr_block = "172.27.27.0/24"
   map_public_ip_on_launch = "true"
   vpc_id = aws_vpc.cfsi_vpc.id
-  tags = { Name = "cfsi_server_subnet" }
+  tags = {
+    Customer = "UNCFSI"
+    Name = "cfsi_server_subnet"
+    Project = "UNCFSI"
+  }
 }
 
 resource "aws_route_table" "cfsi_server_route_table" {
@@ -46,7 +58,11 @@ resource "aws_route_table" "cfsi_server_route_table" {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.cfsi_server_gateway.id
   }
-  tags = { Name = "cfsi_server_route_table "}
+  tags = {
+    Customer = "UNCFSI"
+    Name = "cfsi_server_route_table"
+    Project = "UNCFSI"
+  }
 }
 
 resource "aws_route_table_association" "cfsi_route_table_assoc" {
@@ -70,14 +86,22 @@ resource "aws_security_group" "cfsi_sec_group" {
     protocol = "tcp"
     to_port = 22
   }
-  tags = { Name = "cfsi_sec_group" }
+  tags = {
+    Customer = "UNCFSI"
+    Name = "cfsi_sec_group"
+    Project = "UNCFSI"
+  }
 }
 
 resource "aws_network_interface" "cfsi_server_nic" {
   private_ips = ["172.27.27.27"]
   security_groups = [aws_security_group.cfsi_sec_group.id]
   subnet_id = aws_subnet.cfsi_server_subnet.id
-  tags = { Name = "cfsi_server_nic" }
+  tags = {
+    Customer = "UNCFSI"
+    Name = "cfsi_server_nic"
+    Project = "UNCFSI"
+  }
 }
 
 resource "aws_instance" "cfsi_server" {
@@ -85,6 +109,12 @@ resource "aws_instance" "cfsi_server" {
   availability_zone = "eu-central-1a"
   instance_type = "c5a.16xlarge"
   key_name = "cfsi"
+  connection {
+    host = self.public_ip
+    private_key = file("~/.ssh/cfsi.pem")
+    type = "ssh"
+    user = "ubuntu"
+  }
   network_interface {
     device_index = 0
     network_interface_id = aws_network_interface.cfsi_server_nic.id

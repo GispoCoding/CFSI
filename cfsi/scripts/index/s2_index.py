@@ -81,7 +81,7 @@ class S2Indexer(ODCIndexer):
                 data = self.s3obj_to_etree(obj)
                 uri = self.generate_s3_uri(bucket_name, key)
                 dataset_doc = self.generate_eo3_dataset_doc(bucket_name, uri, data)
-                self.add_dataset(dataset_doc, uri)
+                self.add_dataset(dataset_doc)
                 queue.task_done()
             except Empty:
                 break
@@ -132,24 +132,6 @@ class S2Indexer(ODCIndexer):
         }
 
         return self.relative_s3_keys_to_absolute(eo3, uri)
-
-    def add_dataset(self, doc: Dict, uri: str, **kwargs) -> (ODCDataset, Union[Exception, None]):
-        """ Adds dataset to dcIndex """
-        LOGGER.info("Indexing %s", uri)
-        index = self.dc.index
-        resolver = Doc2Dataset(index, **kwargs)
-        dataset, err = resolver(doc, uri)
-        if err is not None:
-            LOGGER.error(err)
-            return dataset, err
-        try:
-            index.datasets.add(dataset)  # Source policy to be checked in sentinel 2 dataset types
-        except changes.DocumentMismatchError:
-            index.datasets.update(dataset, {tuple(): changes.allow_any})
-        except Exception as err:
-            LOGGER.error(f"Unhandled exception when indexing: {err}")
-
-        return dataset, err
 
     @staticmethod
     def generate_measurements(bucket_name: str) -> Dict:

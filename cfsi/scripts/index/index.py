@@ -1,7 +1,7 @@
 import os
 from logging import DEBUG
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Union
 from types import SimpleNamespace
 from urllib.parse import urlparse
 from uuid import UUID
@@ -10,7 +10,10 @@ from xml.etree import ElementTree
 import boto3
 from boto3 import Session
 from datacube import Datacube
+from datacube.index.hl import Doc2Dataset
 from datacube.model import Dataset as ODCDataset
+from datacube.utils import changes
+from datacube.utils.changes import DocumentMismatchError
 
 from cfsi.utils.logger import create_logger
 from cfsi.utils.utils import swap_s2_bucket_names
@@ -27,8 +30,27 @@ class ODCIndexer:
         self.session: Session = Session(
             aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
             aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
-            region_name='eu-central-1',
-        )
+            region_name='eu-central-1')
+
+    def add_dataset(self, doc: Dict, **kwargs) -> (ODCDataset, Union[Exception, None]):
+        """ Adds dataset to dcIndex """
+        uri = doc["uri"]
+        LOGGER.info(f"Indexing {uri}")
+        index = self.dc.index
+        resolver = Doc2Dataset(index, **kwargs)
+        dataset, err = resolver(doc, uri)
+        if err is not None:
+            LOGGER.error(f"Error indexing {uri}: {err}")
+            return dataset, err
+        try:
+            index.datasets.add(dataset)
+        except DocumentMismatchError:
+            index.datasets.update(dataset, {tuple(): changes.allow_any})
+        except Exception as err:
+            LOGGER.error(f"Unhandled exception {err}")
+            pass
+
+        return dataset, err
 
     @staticmethod
     def generate_s3_uri(bucket_name: str, key: str) -> str:

@@ -1,12 +1,9 @@
 from hashlib import md5
 from logging import DEBUG
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import Dict, List
 
-from datacube.index.hl import Doc2Dataset
 from datacube.model import Dataset as ODCDataset
-from datacube.utils import changes
-from datacube.utils.changes import DocumentMismatchError
 
 from cfsi.scripts.index import ODCIndexer
 from cfsi.utils.logger import create_logger
@@ -36,7 +33,6 @@ class S2CloudlessIndexer(ODCIndexer):
         """ Generates and returns a s2cloudless eo3 metadata document """
         cloud_mask_path = masks["cloud_mask"]
         shadow_mask_path = masks["shadow_mask"]
-        LOGGER.debug(f"Indexing s2cloudless output, masks: {masks}")
         # TODO: handle writing to S3
         protocol = "file:/"
         swap_fs = False
@@ -44,12 +40,10 @@ class S2CloudlessIndexer(ODCIndexer):
             cloud_mask_path, shadow_mask_path = container_path_to_global_path(cloud_mask_path, shadow_mask_path)
         uri = protocol + str(cloud_mask_path.parent)
 
-        LOGGER.debug(f"Generated output uri: {uri}")
         l1c_uri = l1c_dataset.uris[0]
         l1c_metadata_uri = l1c_uri + "/metadata.xml"
         l2a_dataset_id = self.l2a_dataset_from_l1c(l1c_dataset).id
 
-        LOGGER.debug(f"Getting L1C metadata.xml object: {l1c_metadata_uri}")
         l1c_metadata_doc = self.s3obj_to_etree(self.get_object_from_s3_uri(
             l1c_metadata_uri, RequestPayer="requester"))
         tile_metadata = self.read_s2_tile_metadata(l1c_metadata_doc)
@@ -70,11 +64,9 @@ class S2CloudlessIndexer(ODCIndexer):
             },
             "measurements": {
                 "cloud_mask": {
-                    "grid": "default",
                     "path": str(cloud_mask_path),
                 },
                 "shadow_mask": {
-                    "grid": "default",
                     "path": str(shadow_mask_path),
                 },
             },
@@ -94,23 +86,3 @@ class S2CloudlessIndexer(ODCIndexer):
             }
         }
         return eo3
-
-    def add_dataset(self, doc: Dict, **kwargs) -> (ODCDataset, Union[Exception, None]):
-        """ Adds dataset to dcIndex """
-        uri = doc["uri"]
-        LOGGER.info(f"Indexing {uri}")
-        index = self.dc.index
-        resolver = Doc2Dataset(index, **kwargs)
-        dataset, err = resolver(doc, uri)
-        if err is not None:
-            LOGGER.error(f"Error indexing {uri}: {err}")
-            return dataset, err
-        try:
-            index.datasets.add(dataset)
-        except DocumentMismatchError:
-            index.datasets.update(dataset, {tuple(): changes.allow_any})
-        except Exception as err:
-            LOGGER.error(f"Unhandled exception {err}")
-            pass
-
-        return dataset, err

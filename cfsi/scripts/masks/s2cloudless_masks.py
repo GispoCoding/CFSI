@@ -13,7 +13,9 @@ from cfsi.utils.array_to_geotiff import array_to_geotiff
 from cfsi.utils.load_datasets import dataset_from_odcdataset
 from cfsi.utils.logger import create_logger
 from osgeo import gdal
+
 gdal.UseExceptions()
+gdal.PushErrorHandler("CPLQuietErrorHandler")
 
 # TODO: define in a separate config file
 CLOUD_THRESHOLD = 0.3           # cloud threshold value for s2cloudless
@@ -221,10 +223,10 @@ def main():
         max_iterations = len(l1c_datasets)
 
     for dataset in l1c_datasets:
-        LOGGER.info(f"Processing {dataset}, iteration {i}/{max_iterations}")
         if check_existing_masks(dataset, "s2cloudless"):
             LOGGER.info(f"S2Cloudless masks for dataset {dataset} already exist")
             continue
+        LOGGER.info(f"Processing {dataset}, iteration {i}/{max_iterations}")
         mask_arrays = process_dataset(dataset)
         masks = {"clouds": mask_arrays[0],
                  "shadows": mask_arrays[1]}

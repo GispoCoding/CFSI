@@ -244,7 +244,11 @@ def main():
             LOGGER.warning(f"Reached maximum iterations count {max_iterations}")
             break
 
-    LOGGER.info(f"Creating mosaic from {len(indexed_masks)} masks")
+    if len(indexed_masks) == 0:
+        LOGGER.warning("No new masks generated")
+        return
+
+    LOGGER.info(f"Creating mosaic from {len(indexed_masks)} new masks")
     mosaic_ds = mosaic_from_mask_datasets(indexed_masks)
     mosaic_filepath = Path(OUTPUT_PATH / "latest_mosaic.tif")
     LOGGER.info(f"Writing mosaic to {mosaic_filepath}")

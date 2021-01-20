@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, Union
 import numpy as np
 from osgeo import gdal
 
@@ -9,13 +9,13 @@ gdal.UseExceptions()
 LOGGER = create_logger("array_to_geotiff")
 
 
-def array_to_geotiff_multiband(file_path: Path,
-                               data: List[np.ndarray],
-                               geo_transform: Tuple,
-                               projection: str,
-                               nodata_val=0,
-                               data_type=gdal.GDT_Float32):
-    """ Create a multiband GeoTIFF file with data from an array.
+def array_to_geotiff(file_path: Path,
+                     data: Union[List[np.ndarray], np.ndarray],
+                     geo_transform: Tuple,
+                     projection: str,
+                     nodata_val=0,
+                     data_type=gdal.GDT_Float32):
+    """ Create a single or multi band GeoTIFF file with data from an array.
     file_name : output geotiff file path including extension
     data : list of numpy arrays
     geo_transform : Geotransform for output raster; e.g.
@@ -30,6 +30,8 @@ def array_to_geotiff_multiband(file_path: Path,
     if not file_path.parent.exists():
         LOGGER.info(f"Creating output directory {file_path}")
         file_path.parent.mkdir(parents=True, exist_ok=True)
+    if isinstance(data, np.ndarray):
+        data = [data]
     dataset = driver.Create(str(file_path), cols, rows, len(data), data_type)
     dataset.SetGeoTransform(geo_transform)
     dataset.SetProjection(projection)

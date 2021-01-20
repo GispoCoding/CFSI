@@ -14,23 +14,23 @@ measurements:
   - name: 'B01'
     aliases: [red]
     units: '1'
-    dtype: uint8
+    dtype: uint16
     nodata: 0
 
   - name: 'B02'
     aliases: [green]
     units: '1'
-    dtype: uint8
+    dtype: uint16
     nodata: 0
 
   - name: 'B03'
     aliases: [blue]
     units: '1'
-    dtype: uint8
+    dtype: uint16
     nodata: 0
 
   - name: 'B04'
     aliases: [recentness]
     units: '1'
-    dtype: uint8
+    dtype: uint16
     nodata: 0

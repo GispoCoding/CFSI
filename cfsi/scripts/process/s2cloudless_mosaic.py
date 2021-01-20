@@ -99,17 +99,17 @@ def write_mask_arrays(dataset: ODCDataset,
 
 def write_mosaic_to_file(mosaic_ds: xa.Dataset) -> Path:
     """ Creates a new mosaic from a list of S2Cloudless mask ODC Datasets """
-    mosaic_filepath = generate_mosaic_output_path("s2cloudless")
+    filepath = generate_mosaic_output_path("s2cloudless")
 
     LOGGER.info("Constructing mosaic array")
-    mosaic_data: List[np.ndarray] = [np.squeeze(mosaic_ds[band].values)
+    data: List[np.ndarray] = [np.squeeze(mosaic_ds[band].values)
                                      for band in mosaic_ds.data_vars]
     geo_transform, projection = gdal_params_for_xadataset(mosaic_ds)
 
-    LOGGER.info(f"Writing mosaic to {mosaic_filepath}")
-    array_to_geotiff(mosaic_filepath, mosaic_data, geo_transform, projection)
-    LOGGER.info(f"Generated mosaic {mosaic_filepath}")
-    return mosaic_filepath
+    LOGGER.info(f"Writing mosaic to {filepath}")
+    array_to_geotiff(filepath, data, geo_transform, projection, data_type=gdal.GDT_UInt16)
+    LOGGER.info(f"Generated mosaic {filepath}")
+    return filepath
 
 
 if __name__ == "__main__":

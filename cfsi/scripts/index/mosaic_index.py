@@ -8,7 +8,7 @@ import xarray as xa
 from cfsi.scripts.index import ODCIndexer
 from cfsi.utils.logger import create_logger
 
-LOGGER = create_logger("mosaic_index")
+LOGGER = create_logger("mosaic_index", level=10)
 
 
 class MosaicIndexer(ODCIndexer):
@@ -68,7 +68,7 @@ class MosaicIndexer(ODCIndexer):
                 "eo:instrument": "MSI",
                 "eo:platform": "SENTINEL-2",
                 "odc:file_format": "GeoTIFF",
-                "datetime": mosaic_ds.time[0],
+                "datetime": mosaic_ds.time.time.values,
             }
         }
         return eo3

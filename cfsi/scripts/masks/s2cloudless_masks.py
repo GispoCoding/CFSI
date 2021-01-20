@@ -7,7 +7,6 @@ from datacube.model import Dataset as ODCDataset
 import datacube.storage._read  # TODO: Remove hack to avoid circular import ImportError
 import numpy as np
 from s2cloudless import S2PixelCloudDetector
-
 from cfsi.scripts.index.s2cloudless_index import S2CloudlessIndexer
 from cfsi.scripts.mosaic.mosaic import mosaic_from_mask_datasets
 from cfsi.utils.array_to_geotiff import array_to_geotiff_multiband
@@ -202,36 +201,47 @@ def write_dataset_rgb(dataset: ODCDataset):
     odcdataset_to_tif(dataset, data, product_name="rgb")
 
 
+def check_existing_masks(dataset: ODCDataset, product_name: str) -> bool:
+    """ Checks if a S2Cloudless mask for given dataset already exists """
+    output_directory = generate_s2_file_output_path(dataset, product_name).parent
+    if output_directory.exists():
+        return True
+    return False
+
+
 def main():
+    """ Create s2cloudless masks for indexed L1C datasets """
     LOGGER.info("Starting")
     dc = datacube.Datacube(app="s2cloudless-main")
     l1c_datasets = dc.find_datasets(product="s2a_level1c_granule")
     indexed_masks: List[ODCDataset] = []
 
     i = 1
-    max_iterations = 200
+    max_iterations = 4
     if len(l1c_datasets) < max_iterations:
         max_iterations = len(l1c_datasets)
 
     for dataset in l1c_datasets:
-        LOGGER.debug(f"Iteration {i}/{max_iterations}")
-        LOGGER.info(f"Processing {dataset}")
+        LOGGER.info(f"Processing {dataset}, iteration {i}/{max_iterations}")
+        if check_existing_masks(dataset, "s2cloudless"):
+            LOGGER.info(f"S2Cloudless masks for dataset {dataset} already exist")
+            continue
         mask_arrays = process_dataset(dataset)
         masks = {"clouds": mask_arrays[0],
                  "shadows": mask_arrays[1]}
 
-        output_mask_files = odcdataset_to_tif(dataset, masks, "s2cloudless", data_type=gdal.GDT_Byte)
+        output_mask_files = odcdataset_to_tif(dataset, masks, "s2cloudless", gdal.GDT_Byte)
         output_masks = {
             "cloud_mask": output_mask_files[0],
             "shadow_mask": output_mask_files[1]}
         if WRITE_RGB:
-            LOGGER.info(f"Writing rgb output")
+            LOGGER.info("Writing rgb output")
             write_dataset_rgb(dataset)  # TODO: write corresponding L2A dataset
         LOGGER.info(f"Finished processing {dataset}, indexing output")
         indexed_masks += S2CloudlessIndexer().index({dataset: output_masks})
         i += 1
-        if i > max_iterations:  # TODO: remove
-            LOGGER.warning(f"Mask generation reached maximum iterations count {max_iterations}")
+        if i > max_iterations:
+            LOGGER.warning(f"Reached maximum iterations count {max_iterations}")
             break
 
     LOGGER.info(f"Creating mosaic from {len(indexed_masks)} masks")

@@ -26,12 +26,12 @@ def array_to_geotiff(file_path: Path,
         Optionally set the data_type of the output raster; can be
         useful when exporting an array of float or integer values. """
     driver = gdal.GetDriverByName('GTiff')
-    rows, cols = data[0].shape  # Create raster of given size and projection
     if not file_path.parent.exists():
         LOGGER.info(f"Creating output directory {file_path}")
         file_path.parent.mkdir(parents=True, exist_ok=True)
     if isinstance(data, np.ndarray):
         data = [data]
+    rows, cols = data[0].shape  # Create raster of given size and projection
     dataset = driver.Create(str(file_path), cols, rows, len(data), data_type)
     dataset.SetGeoTransform(geo_transform)
     dataset.SetProjection(projection)

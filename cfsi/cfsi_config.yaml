@@ -6,7 +6,6 @@ config_file:
   has_secrets: false
   store_secrets: true
 
-
 secrets:
   AWS_ACCESS_KEY_ID
   AWS_SECRET_ACCESS_KEY
@@ -30,7 +29,6 @@ index:
     ]
     months: [
         "9",
-        "10",
     ]
     years: [
         "2020"
@@ -44,7 +42,7 @@ masks:
     cloud_projection_distance: 30  # maximum distance to search for cloud shadows
     dark_pixel_threshold: 0.15     # max band 8 value for pixel to be considered dark
     write_rgb: false               # write l1c rgb for validating results
-    max_iterations: 2              # maximum number of mask generation iterations
+    max_iterations: 200            # maximum number of mask generation iterations
 
 mosaic:
   recentness: 1  # 0: don't check, 1: check once, 2: check for every band

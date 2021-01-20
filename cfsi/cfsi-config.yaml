@@ -1,0 +1,51 @@
+# CFSI configuration file
+# Lines starting with # are ignored
+
+config_file:
+  version: 0.1.0
+  has_secrets: false
+  store_secrets: true
+
+
+secrets:
+  AWS_ACCESS_KEY_ID
+  AWS_SECRET_ACCESS_KEY
+
+logging:
+  log_level: 10  # 10: debug, 20: info, 30: warn, 40: error, 50: critical
+
+index:
+  s2_index:
+    s3_buckets: [
+        "sentinel-s2-l1c",
+        "sentinel-s2-l2a",
+    ]
+    grids: [
+        "35PNM",
+        "35PPM",
+        "35PQM",
+        "35PNL",
+        "35PPL",
+        "35PQL",
+    ]
+    months: [
+        "08",
+        "09",
+        "10",
+        "08",
+        "09",
+        "10",
+    ]
+    years: [
+        "2020"
+    ]
+
+masks:
+  s2cloudless_masks:
+    cloud_threshold: 0.3           # cloud threshold value for s2cloudless
+    max_cloud_threshold: 100.0     # maximum cloudiness percentage in metadata
+    min_cloud_threshold: 0.0       # minimum cloudiness percentage in metadata
+    cloud_projection_distance: 30  # maximum distance to search for cloud shadows
+    dark_pixel_threshold: 0.15     # max band 8 value for pixel to be considered dark
+    write_rgb: false               # write l1c rgb for validating results
+    max_iterations: 200            # maximum number of mask generation iterations

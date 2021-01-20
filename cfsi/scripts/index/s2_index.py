@@ -3,7 +3,7 @@ import os
 from queue import Queue
 from pathlib import Path
 from queue import Empty
-from typing import Dict, Union
+from typing import Dict, Union, List
 from types import SimpleNamespace
 
 import boto3
@@ -17,13 +17,12 @@ from datacube.index.index import Index as dcIndex
 from datacube.model import Dataset as ODCDataset
 from datacube.utils import changes
 
+from cfsi import config
 from cfsi.utils.logger import create_logger
 
-from cfsi.constants import (GUARDIAN, L1C_BUCKET, L2A_BUCKET,
-                            S2_MEASUREMENTS, S2_PRODUCT_NAMES)
+from cfsi.constants import (GUARDIAN, L2A_BUCKET, S2_MEASUREMENTS, S2_PRODUCT_NAMES)
 
 LOGGER = create_logger("s2-index")
-INDEX_BUCKETS = [L1C_BUCKET, L2A_BUCKET]
 
 
 def get_s3_uri(bucket_name: str, key: str) -> str:
@@ -188,6 +187,19 @@ def index_from_s3(session: Session, bucket_name: str, queue):
             break
 
 
+def generate_s3_prefixes() -> List[str]:
+    """ Generates a list of S3 bucket prefixes based on config """
+    prefixes = []
+    for grid in config.index.s2_index.grids:
+        a = grid[:2]
+        b = grid[2:3]
+        c = grid[3:]
+        for year in config.index.s2_index.years:
+            prefixes += [f"tiles/{a}/{b}/{c}/{year}/{month}"
+                         for month in config.index.s2_index.months]
+    return prefixes
+
+
 def main():
     session = boto3.Session(
         aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
@@ -196,12 +208,13 @@ def main():
     )
     s3 = session.resource('s3')
     queue = Queue()
-    for bucket_name in INDEX_BUCKETS:
+    prefixes = generate_s3_prefixes()
+    for bucket_name in config.index.s2_index.s3_buckets:
         bucket = s3.Bucket(bucket_name)
-        # TODO: index other areas
-        for obj in bucket.objects.filter(Prefix='tiles/35/P/PM/2020/10/', RequestPayer='requester'):
-            if obj.key.endswith('metadata.xml'):
-                queue.put(obj.key)
+        for prefix in prefixes:
+            for obj in bucket.objects.filter(Prefix=prefix, RequestPayer="requester"):
+                if obj.key.endswith("metadata.xml"):
+                    queue.put(obj.key)
 
         q_size = queue.qsize()
         LOGGER.info(f"Indexing {q_size} {bucket_name} tiles")

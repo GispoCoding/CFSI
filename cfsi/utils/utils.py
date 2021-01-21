@@ -16,8 +16,8 @@ def container_path_to_global_path(*file_paths: Path) -> List[Path]:
     for file_path in file_paths:
         file_string = str(file_path)
         protocol = ""
-        if file_string.startswith("file:/"):  # TODO: more protocols
-            protocol = "file:/"
+        if file_string.startswith("file://"):  # TODO: more protocols
+            protocol = "file://"
             file_string = file_string[len(protocol):]
         if file_string.startswith(container_output_path):
             res.append(Path(protocol + file_string.replace(

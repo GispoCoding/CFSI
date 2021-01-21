@@ -4,7 +4,6 @@ import numpy as np
 from cfsi.scripts.index.mosaic_index import MosaicIndexer
 
 time = np.datetime64('2020-09-10T08:47:27.8891464000')
-print(str(time))
 
 file_path = Path('/home/mikael/files/cfsi_container_out/mosaics/2021-01-21_s2cloudless_0.tif')
 eo3_doc = {
@@ -22,23 +21,23 @@ eo3_doc = {
     },
     'measurements': {
         'B01': {
-            'path': 'file://home/mikael/files/cfsi_container_out/mosaics/2021-01-21_s2cloudless_0.tif',
+            'path': 'file:///home/mikael/files/cfsi_container_out/mosaics/2021-01-21_s2cloudless_0.tif',
             'band': 1
         },
         'B02': {
-            'path': 'file://home/mikael/files/cfsi_container_out/mosaics/2021-01-21_s2cloudless_0.tif',
+            'path': 'file:///home/mikael/files/cfsi_container_out/mosaics/2021-01-21_s2cloudless_0.tif',
             'band': 2
         },
         'B03': {
-           'path': 'file://home/mikael/files/cfsi_container_out/mosaics/2021-01-21_s2cloudless_0.tif',
+           'path': 'file:///home/mikael/files/cfsi_container_out/mosaics/2021-01-21_s2cloudless_0.tif',
            'band': 3
         },
         'B04': {
-            'path': 'file://home/mikael/files/cfsi_container_out/mosaics/2021-01-21_s2cloudless_0.tif',
+            'path': 'file:///home/mikael/files/cfsi_container_out/mosaics/2021-01-21_s2cloudless_0.tif',
             'band': 4
         }
     },
-    'uri': 'file://home/mikael/files/cfsi_container_out/mosaics/2021-01-21_s2cloudless_0.tif',
+    'uri': 'file:///home/mikael/files/cfsi_container_out/mosaics/2021-01-21_s2cloudless_0.tif',
     'properties': {
         'tile_id': '2021-01-21_s2cloudless_0.tif',
         'eo:instrument': 'MSI',

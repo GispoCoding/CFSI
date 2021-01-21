@@ -30,7 +30,7 @@ class MosaicIndexer(ODCIndexer):
         with rasterio.open(file_path) as src:
             transform = src.meta["transform"]
 
-        uri = f"file:/{file_path}"
+        uri = f"file://{file_path}"
         eo3 = {
             "id": md5(str(uri).encode("utf-8")).hexdigest(),
             "$schema": "https://schemas.opendatacube.org/dataset",

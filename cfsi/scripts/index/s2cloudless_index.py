@@ -33,7 +33,7 @@ class S2CloudlessIndexer(ODCIndexer):
         cloud_mask_path = masks["cloud_mask"]
         shadow_mask_path = masks["shadow_mask"]
         # TODO: handle writing to S3
-        protocol = "file:/"
+        protocol = "file://"
         swap_fs = False
         if swap_fs:  # TODO: determine when to swap between host and
             cloud_mask_path, shadow_mask_path = container_path_to_global_path(cloud_mask_path, shadow_mask_path)

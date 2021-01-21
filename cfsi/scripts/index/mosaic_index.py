@@ -37,7 +37,7 @@ class MosaicIndexer(ODCIndexer):
             "product": {
                 "name": "cloudless_mosaic",
             },
-            "crs": mosaic_ds.attrs["crs"],
+            "crs": str(mosaic_ds.attrs["crs"]).upper(),
             "grids": {
                 "default": {  # 10m
                     "shape": (mosaic_ds.dims["y"], mosaic_ds.dims["x"]),

@@ -97,7 +97,7 @@ class ODCIndexer:
         return SimpleNamespace(
             tile_id=data.find("./*/TILE_ID").text,
             sensing_time=data.find("./*/SENSING_TIME").text,
-            crs_code=data.find("./*/Tile_Geocoding/HORIZONTAL_CS_CODE").text.lower(),
+            crs_code=data.find("./*/Tile_Geocoding/HORIZONTAL_CS_CODE").text.upper(),
             sun_zenith=float(data.find("./*/Tile_Angles/Mean_Sun_Angle/ZENITH_ANGLE").text),
             sun_azimuth=float(data.find("./*/Tile_Angles/Mean_Sun_Angle/AZIMUTH_ANGLE").text),
             cloudy_pixel_percentage=float(data.find("./*/Image_Content_QI/CLOUDY_PIXEL_PERCENTAGE").text),

@@ -5,3 +5,4 @@ s2cloudless~=1.4.0
 numpy~=1.19.5
 xarray~=0.16.2
 pyyaml~=5.3.1
+rasterio~=1.1.8

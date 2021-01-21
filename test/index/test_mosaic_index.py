@@ -3,6 +3,9 @@ import numpy as np
 
 from cfsi.scripts.index.mosaic_index import MosaicIndexer
 
+time = np.datetime64('2020-09-10T08:47:27.8891464000')
+print(str(time))
+
 file_path = Path('/home/mikael/files/cfsi_container_out/mosaics/2021-01-21_s2cloudless_0.tif')
 eo3_doc = {
     'id': '53c7ad87e0b11920924f3b7d3274ec45',
@@ -41,7 +44,7 @@ eo3_doc = {
         'eo:instrument': 'MSI',
         'eo:platform': 'SENTINEL-2',
         'odc:file_format': 'GeoTIFF',
-        'datetime': np.datetime64('2020-09-10T08:47:27.8891464000')
+        'datetime': str(time),
     }
 }
 

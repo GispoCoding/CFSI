@@ -45,7 +45,7 @@ class S2Indexer(ODCIndexer):
         queue = Queue()
         prefixes = self.generate_s3_prefixes()
         for prefix in prefixes:
-            LOGGER.info(f"Fetching metadata for s3://{bucket_name}/{prefix[:20]}/*")
+            LOGGER.info(f"Fetching metadata for s3://{bucket_name}/{prefix}/*")
             for obj in bucket.objects.filter(Prefix=prefix, RequestPayer="requester"):
                 if obj.key.endswith("metadata.xml"):
                     queue.put(obj.key)

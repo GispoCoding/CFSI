@@ -86,6 +86,20 @@ resource "aws_security_group" "cfsi_sec_group" {
     protocol = "tcp"
     to_port = 22
   }
+  ingress {
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "datacube-ows"
+    from_port = 8000
+    protocol = "tcp"
+    to_port = 8000
+  }
+  ingress {
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "datacube-ows"
+    from_port = 5432
+    protocol = "tcp"
+    to_port = 5432
+  }
   tags = {
     Customer = "UNCFSI"
     Name = "cfsi_sec_group"

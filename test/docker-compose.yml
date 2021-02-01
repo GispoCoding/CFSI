@@ -1,0 +1,33 @@
+version: "3"
+services:
+  odc_test:
+    build: ..
+    environment:
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
+      - CFSI_CONTAINER_OUTPUT=/output
+      - CFSI_OUTPUT_PROTOCOL=FILE
+      - CFSI_OUTPUT_DIR
+    depends_on:
+      - db
+    networks:
+      - cfsi_test
+    volumes:
+      - ${CFSI_OUTPUT_DIR}:/output
+      - .:/app/cfsi/test
+    command: ["cfsi/utils/wait-for-it.sh", "db:5432", "--", "cfsi/test/setup_tests.sh"]
+  db:
+    environment:
+      POSTGRES_USER: opendatacube
+      POSTGRES_PASSWORD: opendatacube
+    image: postgis/postgis:13-3.1
+    networks:
+      - cfsi_test
+    ports:
+      - 5432:5432
+    restart: always
+
+networks:
+  cfsi_test:
+    name:
+      cfsi

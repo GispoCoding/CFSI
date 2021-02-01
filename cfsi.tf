@@ -95,6 +95,13 @@ resource "aws_security_group" "cfsi_sec_group" {
   }
   ingress {
     cidr_blocks = ["0.0.0.0/0"]
+    description = "geoserver"
+    from_port = 8600
+    protocol = "tcp"
+    to_port = 8600
+  }
+  ingress {
+    cidr_blocks = ["0.0.0.0/0"]
     description = "datacube-ows"
     from_port = 5432
     protocol = "tcp"

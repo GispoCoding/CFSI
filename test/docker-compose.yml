@@ -29,5 +29,3 @@ services:
 
 networks:
   cfsi_test:
-    name:
-      cfsi

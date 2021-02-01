@@ -9,3 +9,4 @@ datacube product add cfsi/products/s2cloudless_masks.yaml
 datacube product add cfsi/products/cloudless_mosaic.yaml
 
 python3 -m cfsi.test.index.test_mosaic_index
+python3 -m cfsi.scripts.index.s2cloudless_index

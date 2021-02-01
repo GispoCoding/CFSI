@@ -10,13 +10,21 @@ services:
             - CFSI_OUTPUT_DIR
         depends_on:
             - db
+        networks:
+            - cfsi
         volumes:
             - ${CFSI_OUTPUT_DIR}:/output
     db:
-        image: postgis/postgis:13-3.1
-        restart: always
-        ports:
-            - 5432:5432
         environment:
             POSTGRES_USER: opendatacube
             POSTGRES_PASSWORD: opendatacube
+        image: postgis/postgis:13-3.1
+        networks:
+            - cfsi
+        ports:
+            - 5432:5432
+        restart: always
+
+networks:
+    cfsi:
+        driver: bridge

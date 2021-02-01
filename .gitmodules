@@ -1,0 +1,3 @@
+[submodule "datacube-ows"]
+	path = datacube-ows
+	url = https://github.com/opendatacube/datacube-ows

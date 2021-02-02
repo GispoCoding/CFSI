@@ -54,16 +54,15 @@ def main():
         LOGGER.info(f"Finished writing {dataset}, indexing output")
         indexed_masks += S2CloudlessIndexer().index({dataset: output_masks})
 
-        i += 1
         if i > max_iterations:
             LOGGER.warning(f"Reached maximum iterations count {max_iterations}")
             break
+        i += 1
 
     if len(indexed_masks) == 0:
         LOGGER.warning("No new masks generated")
-        return
 
-    mosaic_ds = mosaic_from_mask_datasets(indexed_masks)
+    mosaic_ds = mosaic_from_mask_datasets(get_mask_datasets())
     output_mosaic_path = write_mosaic_to_file(mosaic_ds)
     LOGGER.info("Indexing output mosaic")
     MosaicIndexer().index(mosaic_ds, output_mosaic_path)
@@ -95,6 +94,13 @@ def write_mask_arrays(dataset: ODCDataset,
         "cloud_mask": output_mask_files[0],
         "shadow_mask": output_mask_files[1]}
     return output_masks
+
+
+def get_mask_datasets() -> List[ODCDataset]:
+    """ Gets all S2Cloudless datasets from ODC Index """
+    dc = datacube.Datacube(app="s2cloudless_mosaic")
+    s2cloudless_datasets = dc.find_datasets(product="s2a_level1c_s2cloudless")
+    return s2cloudless_datasets
 
 
 def write_mosaic_to_file(mosaic_ds: xa.Dataset) -> Path:

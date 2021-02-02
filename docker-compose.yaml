@@ -16,13 +16,13 @@ services:
             - ${CFSI_OUTPUT_DIR}:/output
     db:
         environment:
-            POSTGRES_USER: opendatacube
-            POSTGRES_PASSWORD: opendatacube
-        image: postgis/postgis:13-3.1
+            - POSTGRES_USER=${DB_USERNAME}
+            - POSTGRES_PASSWORD=${DB_PASSWORD}
+        image: postgis/postgis:${POSTGIS_VERSION_TAG}
         networks:
             - cfsi
         ports:
-            - 5432:5432
+            - ${DB_PORT}:5432
         restart: always
 
 networks:

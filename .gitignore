@@ -8,5 +8,3 @@ __pycache__/
 **/.terraform/*
 *.tfstate
 *.tfstate.*
-*.tfvars
-

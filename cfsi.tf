@@ -11,6 +11,11 @@ provider "aws" {
   region = "eu-central-1"
 }
 
+variable "AWS_AMI_ID" {
+  description = "ID of AMI on AWS EC2, defaults to Ubuntu 20.04 on eu-central-1"
+  default = "ami-0502e817a62226e03"
+  type = string
+}
 variable "AWS_ACCESS_KEY_ID" {
   description = "AWS access key id"
   type = string
@@ -20,6 +25,38 @@ variable "AWS_SECRET_ACCESS_KEY" {
   description = "AWS secret access key"
   type = string
   sensitive = true
+}
+variable "CFSI_USER_HOST" {
+  description = "Name of user running CFSI on host machine"
+  type = string
+}
+variable "CFSI_BASE_HOST" {
+  description = "CFSI base directory on host machine"
+  type = string
+}
+variable "CFSI_OUTPUT_HOST" {
+  description = "CFSI output directory on host machine"
+  type = string
+}
+variable "CFSI_REPOSITORY" {
+  description = "CFSI source code repository URL"
+  default = "https://github.com/GispoCoding/CFSI.git"
+  type = string
+}
+variable "OWS_REPOSITORY" {
+  description = "OWS source code repository URL"
+  default = "https://github.com/GispoCoding/datacube-ows.git"
+  type = string
+}
+variable "CFSI_BRANCH" {
+  description = "Name of branch to clone from CFSI_REPOSITORY"
+  default = "master"
+  type = string
+}
+variable "OWS_BRANCH" {
+  description = "Name of branch to clone from OWS_REPOSITORY"
+  default = "master"
+  type = string
 }
 
 resource "aws_vpc" "cfsi_vpc" {
@@ -126,7 +163,7 @@ resource "aws_network_interface" "cfsi_server_nic" {
 }
 
 resource "aws_instance" "cfsi_server" {
-  ami = "ami-0502e817a62226e03"
+  ami = var.AWS_AMI_ID
   availability_zone = "eu-central-1a"
   instance_type = "c5a.16xlarge"
   key_name = "cfsi"

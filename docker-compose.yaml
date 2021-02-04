@@ -7,8 +7,7 @@ services:
         environment:
             - AWS_ACCESS_KEY_ID
             - AWS_SECRET_ACCESS_KEY
-            - CFSI_CONTAINER_OUTPUT=/output
-            - CFSI_OUTPUT_DIR
+            - DATACUBE_DB_URL=postgresql://${DB_USERNAME}:${DB_PASSWORD}@db:${DB_PORT}/${DB_USERNAME}
         depends_on:
             - db
         networks:

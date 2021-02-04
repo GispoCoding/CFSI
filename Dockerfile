@@ -11,10 +11,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     useradd -m app
 
-ENV AWS_REQUEST_PAYER=requester
-ENV CFSI_BASE_DIR=/app/cfsi
 ENV CPL_LOG=/dev/null
-ENV DATACUBE_DB_URL=postgresql://opendatacube:opendatacube@db:5432/opendatacube
 
 WORKDIR /app
 ARG CACHE_DATE=2021-01-01

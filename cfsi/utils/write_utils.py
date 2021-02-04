@@ -1,5 +1,4 @@
 import os
-from datetime import date
 from pathlib import Path
 from typing import List, Tuple, Union, Dict
 import numpy as np
@@ -69,7 +68,7 @@ def generate_s2_file_output_path(dataset: ODCDataset,
      :param dataset: ODCDataset being written
      :param product_name: product name being written. each product goes to its own sub-directory, optional
      :param band_name: name of band being written. band name is appended to filename, optional """
-    base_path = Path(os.environ["CFSI_CONTAINER_OUTPUT"])  # TODO: write to S3
+    base_path = Path(os.environ["CFSI_OUTPUT_CONTAINER"])  # TODO: write to S3
     tile_id, s3_key = get_s2_tile_ids(dataset)
     file_name = f"{tile_id}"
     if band_name:
@@ -152,15 +151,3 @@ def array_to_geotiff(file_path: Path,
 
     # noinspection PyUnusedLocal
     dataset = None  # Close %%file
-
-
-def generate_mosaic_output_path(mosaic_name: str) -> Path:
-    """ Generates an output Path for a new mosaic """
-    base_output_path = Path(os.environ["CFSI_CONTAINER_OUTPUT"])
-    mosaic_dir = Path(base_output_path / "mosaics")
-    i = 0
-    file_path = Path(mosaic_dir / f"{date.today()}_{mosaic_name}_{i}.tif")
-    while file_path.exists():
-        i += 1
-        file_path = Path(mosaic_dir / f"{date.today()}_{mosaic_name}_{i}.tif")
-    return file_path

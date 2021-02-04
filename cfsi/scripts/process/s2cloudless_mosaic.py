@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from typing import List, Dict
 
@@ -7,22 +6,18 @@ from osgeo import gdal
 import datacube
 from datacube.model import Dataset as ODCDataset
 import datacube.storage._read  # TODO: Remove hack to avoid circular import ImportError
-import xarray as xa
 
 from cfsi import config
 from cfsi.scripts.index.mosaic_index import MosaicIndexer
 from cfsi.scripts.masks.s2cloudless_masks import process_dataset
 from cfsi.utils.logger import create_logger
 from cfsi.scripts.index.s2cloudless_index import S2CloudlessIndexer
-from cfsi.scripts.mosaic.mosaic import mosaic_from_mask_datasets
-from cfsi.utils.write_utils import (array_to_geotiff, generate_s2_file_output_path,
-                                    odcdataset_to_tif, write_l1c_dataset_rgb,
-                                    generate_mosaic_output_path, gdal_params_for_xadataset)
+from cfsi.scripts.mosaic.mosaic import MosaicCreator
+from cfsi.utils.write_utils import (generate_s2_file_output_path, odcdataset_to_tif,
+                                    write_l1c_dataset_rgb)
 
 
 LOGGER = create_logger("s2cloudless_mosaic")
-OUTPUT_PATH = Path(os.environ["CFSI_CONTAINER_OUTPUT"])  # TODO: write to S3
-OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 WRITE_RGB = False
 
 
@@ -35,10 +30,11 @@ def main():
     if len(l1c_datasets) < max_iterations:
         max_iterations = len(l1c_datasets)
 
+    # TODO: read products to generate masks for from config
     i = 1
     indexed_masks: List[ODCDataset] = []
     for dataset in l1c_datasets:
-        if check_existing_masks(dataset, "s2cloudless"):
+        if check_existing_masks(dataset, "s2a_level1c_s2cloudless"):
             LOGGER.info(f"S2Cloudless masks for dataset {dataset} already exist")
             continue
 
@@ -62,8 +58,10 @@ def main():
     if len(indexed_masks) == 0:
         LOGGER.warning("No new masks generated")
 
-    mosaic_ds = mosaic_from_mask_datasets(get_mask_datasets())
-    output_mosaic_path = write_mosaic_to_file(mosaic_ds)
+    # TODO: read product names from config
+    mosaic_creator = MosaicCreator("s2a_level1c_s2cloudless")
+    mosaic_ds = mosaic_creator.create_mosaic_dataset()
+    output_mosaic_path = mosaic_creator.write_mosaic_to_file(mosaic_ds)
     LOGGER.info("Indexing output mosaic")
     MosaicIndexer().index(mosaic_ds, output_mosaic_path)
     exit(0)
@@ -101,21 +99,6 @@ def get_mask_datasets() -> List[ODCDataset]:
     dc = datacube.Datacube(app="s2cloudless_mosaic")
     s2cloudless_datasets = dc.find_datasets(product="s2a_level1c_s2cloudless")
     return s2cloudless_datasets
-
-
-def write_mosaic_to_file(mosaic_ds: xa.Dataset) -> Path:
-    """ Creates a new mosaic from a list of S2Cloudless mask ODC Datasets """
-    filepath = generate_mosaic_output_path("s2cloudless")
-
-    LOGGER.info("Constructing mosaic array")
-    data: List[np.ndarray] = [np.squeeze(mosaic_ds[band].values)
-                                     for band in mosaic_ds.data_vars]
-    geo_transform, projection = gdal_params_for_xadataset(mosaic_ds)
-
-    LOGGER.info(f"Writing mosaic to {filepath}")
-    array_to_geotiff(filepath, data, geo_transform, projection, data_type=gdal.GDT_UInt16)
-    LOGGER.info(f"Generated mosaic {filepath}")
-    return filepath
 
 
 if __name__ == "__main__":

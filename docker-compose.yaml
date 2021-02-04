@@ -2,18 +2,19 @@ version: "3"
 services:
     odc:
         build: .
+        env_file:
+            .env
         environment:
             - AWS_ACCESS_KEY_ID
             - AWS_SECRET_ACCESS_KEY
             - CFSI_CONTAINER_OUTPUT=/output
-            - CFSI_OUTPUT_PROTOCOL=FILE
             - CFSI_OUTPUT_DIR
         depends_on:
             - db
         networks:
             - cfsi
         volumes:
-            - ${CFSI_OUTPUT_DIR}:/output
+            - ${CFSI_OUTPUT_HOST}:${CFSI_OUTPUT_CONTAINER}
     db:
         environment:
             - POSTGRES_USER=${DB_USERNAME}

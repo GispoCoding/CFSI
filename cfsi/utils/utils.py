@@ -8,11 +8,11 @@ L2A_BUCKET = "sentinel-s2-l2a"
 
 def container_path_to_global_path(*file_paths: Path) -> List[Path]:
     """ Translates container paths to global paths based on
-    CFSI_CONTAINER_OUTPUT and CFSI_OUTPUT_DIR env variables.
+    CFSI_OUTPUT_CONTAINER and CFSI_OUTPUT_HOST env variables.
     e.g. /output/tiles/... -> /home/ubuntu/cfsi_output/tiles/... """
     res: List[Path] = []
-    container_output_path = os.environ["CFSI_CONTAINER_OUTPUT"]
-    external_output_path = os.environ["CFSI_OUTPUT_DIR"]
+    container_output_path = os.environ["CFSI_OUTPUT_CONTAINER"]
+    external_output_path = os.environ["CFSI_OUTPUT_HOST"]
     for file_path in file_paths:
         file_string = str(file_path)
         protocol = ""

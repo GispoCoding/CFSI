@@ -15,11 +15,11 @@ logging:
 
 index:
   s2_index:
-    s3_buckets: [
+    s3_buckets: [  # List of S3 buckets to use for indexing.
         "sentinel-s2-l1c",
         "sentinel-s2-l2a",
     ]
-    grids: [
+    grids: [  # List of Sentinel-2 grids to index
         "35PNM",
         "35PPM",
         "35PQM",
@@ -27,28 +27,52 @@ index:
         "35PPL",
         "35PQL",
     ]
-    months: [
+    months: [  # List of months to index
+        "7",
+        "8",
         "9",
     ]
-    years: [
+    years: [  # List of years to index
         "2020"
     ]
 
 masks:
+  # Cloud mask generation configuration
   s2cloudless_masks:
     cloud_threshold: 0.3           # cloud threshold value for s2cloudless
-    max_cloud_threshold: 100.0     # maximum cloudiness percentage in metadata
-    min_cloud_threshold: 0.0       # minimum cloudiness percentage in metadata
+    # Maximum and minimum cloudiness percentages in Sentinel-2 tile metadata.
+    # Tiles with cloudiness percentages above or below the threshold are
+    # skipped, and no cloud/shadow masks are generated for them.
+    # Setting these to 100.0 and 0.0 means no tiles are skipped.
+    max_cloud_threshold: 100.0
+    min_cloud_threshold: 0.0
     cloud_projection_distance: 30  # maximum distance to search for cloud shadows
     dark_pixel_threshold: 0.15     # max band 8 value for pixel to be considered dark
     write_rgb: false               # write l1c rgb for validating results
-    max_iterations: 200            # maximum number of mask generation iterations
+    max_iterations: 2
 
 mosaic:
-  recentness: 1  # 0: don't check, 1: check once, 2: check for every band
-  write_reference: false
-  output_bands: [
+  # Mosaic creator configuration
+
+  # Dates is a list of dates in YYYY-MM-DD format specifying the days for which
+  # mosaics are created. A special keyword of "today" is also accepted.
+  # An output mosaic is generated for each entry.
+  dates: [
+      "2020-09-30",
+      "2020-08-30",
+      "today",
+  ]
+
+  # Range defines the maximum range (in days) to look for cloudless pixels.
+  # E.g. a value of 90 means images from up to 90 days before the day specified
+  # in the "dates" list above are taken into account when creating a mosaic.
+  # A higher value will reduce the chance of cloudy areas in the mosaic, at the
+  # cost of performance and recentness.
+  range: 90
+  recentness: 1  # Recentness band: 0: don't create, 1: create for first band, 2: create for all bands
+  output_bands: [  # List of bands to include in the mosaic product
       "B02_10m",
       "B03_10m",
       "B04_10m",
   ]
+  write_original: false  # Write original S2-L2A output images

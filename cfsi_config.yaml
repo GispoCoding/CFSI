@@ -63,6 +63,12 @@ mosaic:
       "today",
   ]
 
+  # List of cloud/shadow mask products to use for creating mosaics.
+  # An output mosaic is generated for each entry.
+  products: [
+      "s2a_level1c_s2cloudless",
+  ]
+
   # Range defines the maximum range (in days) to look for cloudless pixels.
   # E.g. a value of 90 means images from up to 90 days before the day specified
   # in the "dates" list above are taken into account when creating a mosaic.

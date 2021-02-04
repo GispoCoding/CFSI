@@ -1,5 +1,5 @@
 import os
-from datetime import date
+from datetime import datetime, date, timedelta
 from logging import DEBUG
 from pathlib import Path
 from typing import List
@@ -23,20 +23,35 @@ LOGGER = create_logger("s2cloudless_mosaic", level=DEBUG)
 
 class MosaicCreator:
 
-    def __init__(self, mask_product_name: str):
+    def __init__(self, mask_product_name: str,
+                 date_: str = "today",
+                 days: int = 30):
         """ Constructor method """
         self.__product_name = mask_product_name
+        if date_ == "today":
+            self.__end_date = date.today()
+        else:
+            self.__end_date = datetime.strptime(date_, "$Y-%m-%d").date()
+        self.__start_date = self.__end_date - timedelta(days=days)
         self.__mask_datasets = self.__get_mask_datasets()
 
     def __get_mask_datasets(self) -> List[ODCDataset]:
         """ Finds mask datasets based on config """
         # TODO: use config, now returns all datasets for product
         dc = Datacube(app="mosaic_creator")
-        return dc.find_datasets(product=self.__product_name)
+        time_range = (str(self.__start_date), str(self.__end_date))
+        datasets = dc.find_datasets(product=self.__product_name, time=time_range)
+        if not datasets:
+            LOGGER.warning("No mask datasets found for"
+                           f"product={self.__product_name}, time={time_range}")
+            raise ValueError("No datasets found")  # TODO: custom exception
+        return datasets
 
     def create_mosaic_dataset(self) -> xa.Dataset:
         """ Creates a cloudless mosaic from cloud/shadow mask ODCDatasets """
-        LOGGER.info(f"Creating mosaic dataset from {len(self.__mask_datasets)} masks")
+        LOGGER.info(f"Creating {self.__product_name} mosaic dataset "
+                    f"from {len(self.__mask_datasets)} masks "
+                    f"from {self.__start_date} to {self.__end_date}")
         ds = self.__setup_mask_datacube()
         ds = ds.where((ds.cloud_mask == 0) & (ds.shadow_mask == 0), 0)
 
@@ -128,8 +143,8 @@ class MosaicCreator:
         base_output_path = Path(os.environ["CFSI_OUTPUT_CONTAINER"])
         mosaic_dir = Path(base_output_path / "mosaics")
         i = 0
-        file_path = Path(mosaic_dir / f"{date.today()}_{self.__product_name}_{i}.tif")
+        file_path = Path(mosaic_dir / f"{self.__end_date}_{self.__product_name}_{i}.tif")
         while file_path.exists():
             i += 1
-            file_path = Path(mosaic_dir / f"{date.today()}_{self.__product_name}_{i}.tif")
+            file_path = Path(mosaic_dir / f"{self.__end_date}_{self.__product_name}_{i}.tif")
         return file_path

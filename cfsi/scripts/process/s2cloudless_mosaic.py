@@ -60,11 +60,17 @@ def main():
         LOGGER.warning("No new masks generated")
 
     # TODO: read product names from config
-    mosaic_creator = MosaicCreator("s2a_level1c_s2cloudless")
-    mosaic_ds = mosaic_creator.create_mosaic_dataset()
-    output_mosaic_path = mosaic_creator.write_mosaic_to_file(mosaic_ds)
-    LOGGER.info("Indexing output mosaic")
-    MosaicIndexer().index(mosaic_ds, output_mosaic_path)
+    dates = config.mosaic.dates
+    days = config.mosaic.range
+    products = config.mosaic.products
+    for product in products:
+        for date_ in dates:
+            mosaic_creator = MosaicCreator(product, date_, days)
+            mosaic_ds = mosaic_creator.create_mosaic_dataset()
+            output_mosaic_path = mosaic_creator.write_mosaic_to_file(mosaic_ds)
+            LOGGER.info("Indexing output mosaic")
+            MosaicIndexer().index(mosaic_ds, output_mosaic_path)
+
     exit(0)
 
 

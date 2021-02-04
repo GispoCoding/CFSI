@@ -49,7 +49,7 @@ masks:
     cloud_projection_distance: 30  # maximum distance to search for cloud shadows
     dark_pixel_threshold: 0.15     # max band 8 value for pixel to be considered dark
     write_rgb: false               # write l1c rgb for validating results
-    max_iterations: 2
+    max_iterations: 0             # max. nr. of cloud masks to create at once. 0 = unlimited
 
 mosaic:
   # Mosaic creator configuration

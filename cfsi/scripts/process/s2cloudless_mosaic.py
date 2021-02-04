@@ -38,7 +38,8 @@ def main():
             LOGGER.info(f"S2Cloudless masks for dataset {dataset} already exist")
             continue
 
-        LOGGER.info(f"Iteration {i}/{max_iterations}: {dataset}")
+        if max_iterations:
+            LOGGER.info(f"Iteration {i}/{max_iterations}: {dataset}")
         mask_arrays = process_dataset(dataset)
 
         LOGGER.info("Writing masks to file")
@@ -50,7 +51,7 @@ def main():
         LOGGER.info(f"Finished writing {dataset}, indexing output")
         indexed_masks += S2CloudlessIndexer().index({dataset: output_masks})
 
-        if i > max_iterations:
+        if max_iterations and i > max_iterations:
             LOGGER.warning(f"Reached maximum iterations count {max_iterations}")
             break
         i += 1

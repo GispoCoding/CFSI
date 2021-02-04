@@ -24,16 +24,22 @@ def load_config() -> SimpleNamespace:
         return SimpleNamespace(**d)
 
     try:
-        cfsi_base_dir = Path(os.environ["CFSI_BASE_DIR"])
+        cfsi_base_dir = Path(os.environ["CFSI_BASE_CONTAINER"])
         if not cfsi_base_dir.exists():
             LOGGER.critical("Directory specified in environment variable"
-                            "CFSI_BASE_DIR does not exist")
+                            "CFSI_BASE_CONTAINER does not exist")
             raise ValueError("Invalid CFSI_BASE_DIR value")  # TODO: custom exception
     except KeyError:
         LOGGER.warning("Environment variable CFSI_BASE_DIR not set, "
                        f"trying to load configuration from {Path().cwd()}")
-        cfsi_base_dir = Path().cwd()  # TODO: remove comment
-    config_path = Path(cfsi_base_dir / "cfsi_config.yaml")
+        cfsi_base_dir = Path().cwd()
+    try:
+        config_file_name = os.environ["CFSI_CONFIG_FILE"]
+    except KeyError:
+        LOGGER.warning("Environment variable CFSI_CONFIG_FILE not set, "
+                       "trying to load configuration from cfsi_config.yaml")
+        config_file_name = "cfsi_config.yaml"
+    config_path = Path(cfsi_base_dir / config_file_name)
     config_data = load_config_file(config_path)
     return dict_to_namespace(config_data)
 

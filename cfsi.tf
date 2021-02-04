@@ -185,7 +185,12 @@ resource "aws_instance" "cfsi_server" {
   root_block_device { volume_size = 80 }
   user_data = templatefile("${path.module}/setup_cfsi.tpl", {
     AWS_ACCESS_KEY_ID = var.AWS_ACCESS_KEY_ID,
-    AWS_SECRET_ACCESS_KEY = var.AWS_SECRET_ACCESS_KEY
+    AWS_SECRET_ACCESS_KEY = var.AWS_SECRET_ACCESS_KEY,
+    CFSI_BASE_HOST = var.CFSI_BASE_HOST,
+    CFSI_OUTPUT_HOST = var.CFSI_OUTPUT_HOST,
+    CFSI_BRANCH = var.CFSI_BRANCH,
+    CFSI_REPOSITORY = var.CFSI_REPOSITORY,
+    CFSI_USER_HOST = var.CFSI_USER_HOST,
   })
 }
 

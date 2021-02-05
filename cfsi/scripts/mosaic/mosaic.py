@@ -31,7 +31,7 @@ class MosaicCreator:
         if date_ == "today":
             self.__end_date = date.today()
         else:
-            self.__end_date = datetime.strptime(date_, "$Y-%m-%d").date()
+            self.__end_date = datetime.strptime(date_, "%Y-%m-%d").date()
         self.__start_date = self.__end_date - timedelta(days=days)
         self.__mask_datasets = self.__get_mask_datasets()
 

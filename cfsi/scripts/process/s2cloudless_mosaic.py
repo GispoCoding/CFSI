@@ -27,7 +27,7 @@ def main():
     l1c_datasets = get_l1c_datasets()
 
     max_iterations = config.masks.s2cloudless_masks.max_iterations
-    if len(l1c_datasets) < max_iterations:
+    if len(l1c_datasets) < max_iterations or not max_iterations:
         max_iterations = len(l1c_datasets)
 
     # TODO: read products to generate masks for from config
@@ -38,8 +38,7 @@ def main():
             LOGGER.info(f"S2Cloudless masks for dataset {dataset} already exist")
             continue
 
-        if max_iterations:
-            LOGGER.info(f"Iteration {i}/{max_iterations}: {dataset}")
+        LOGGER.info(f"Iteration {i}/{max_iterations}: {dataset}")
         mask_arrays = process_dataset(dataset)
 
         LOGGER.info("Writing masks to file")
@@ -83,6 +82,7 @@ def get_l1c_datasets() -> List[ODCDataset]:
 
 def check_existing_masks(dataset: ODCDataset, product_name: str) -> bool:
     """ Checks if a S2Cloudless mask for given dataset already exists """
+    # TODO: check if mask exists in database instead of on disk
     output_directory = generate_s2_file_output_path(dataset, product_name).parent
     if output_directory.exists():
         return True

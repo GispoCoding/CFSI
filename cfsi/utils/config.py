@@ -30,7 +30,7 @@ def load_config() -> SimpleNamespace:
                             "CFSI_BASE_CONTAINER does not exist")
             raise ValueError("Invalid CFSI_BASE_DIR value")  # TODO: custom exception
     except KeyError:
-        LOGGER.warning("Environment variable CFSI_BASE_DIR not set, "
+        LOGGER.warning("Environment variable CFSI_BASE_CONTAINER not set, "
                        f"trying to load configuration from {Path().cwd()}")
         cfsi_base_dir = Path().cwd()
     try:

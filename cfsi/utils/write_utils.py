@@ -109,13 +109,19 @@ def odcdataset_to_multiple_tif(dataset: ODCDataset,
     return output_paths
 
 
-def write_l1c_dataset_rgb(dataset: ODCDataset):
+def write_l1c_dataset(dataset: ODCDataset, rgb: bool = True):
     """ Writes a ODC S2 L1C dataset to a rgb .tif file """
-    LOGGER.info(f"Writing RGB output for dataset {dataset}")
-    rgb_bands = ['B02', 'B03', 'B04']
-    rgb_ds = dataset_from_odcdataset("s2a_l1c_granule", dataset, measurements=rgb_bands)
-    data = [np.squeeze(rgb_ds[band].values / 10000) for band in rgb_ds.data_vars]
-    odcdataset_to_tif(dataset, data, product_name="rgb")
+    LOGGER.info(f"Writing L1C output for dataset {dataset}")
+    if rgb:
+        measurements = ['B02', 'B03', 'B04']
+        product_name = "rgb"
+    else:
+        measurements = None
+        product_name = "l1c"
+
+    ds = dataset_from_odcdataset("s2a_l1c_granule", dataset, measurements=measurements)
+    data = [np.squeeze(ds[band].values / 10000) for band in ds.data_vars]
+    odcdataset_to_tif(dataset, data, product_name=product_name)
 
 
 def array_to_geotiff(file_path: Path,

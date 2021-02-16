@@ -211,6 +211,14 @@ resource "aws_s3_bucket" "cfsi_s3" {
   }
 }
 
+resource "aws_route53_record" "cfsi_url" {
+  zone_id = "ZQ878NHJH2ZE6"
+  name = "cfsi-dev.gispocoding.fi"
+  type = "A"
+  ttl = "300"
+  records = [aws_instance.cfsi_server.public_ip]
+}
+
 output "cfsi_server_ip_addr" {
   value = aws_instance.cfsi_server.public_ip
 }

@@ -28,9 +28,8 @@ index:
         "35PQL",
     ]
     months: [  # List of months to index
-        "7",
-        "8",
         "9",
+        "10",
     ]
     years: [  # List of years to index
         "2020"
@@ -47,9 +46,10 @@ masks:
     max_cloud_threshold: 100.0
     min_cloud_threshold: 0.0
     cloud_projection_distance: 30  # maximum distance to search for cloud shadows
-    dark_pixel_threshold: 0.15     # max band 8 value for pixel to be considered dark
+    dark_pixel_threshold: 0.25     # max band 8 value for pixel to be considered dark
     write_rgb: false               # write l1c rgb for validating results
-    max_iterations: 0             # max. nr. of cloud masks to create at once. 0 = unlimited
+    write_l1c: false               # write l1c all bands for validating results
+    max_iterations: 0              # max. nr. of cloud masks to create at once. 0 = unlimited
 
 mosaic:
   # Mosaic creator configuration
@@ -59,8 +59,7 @@ mosaic:
   # An output mosaic is generated for each entry.
   dates: [
       "2020-09-30",
-      "2020-08-30",
-      "today",
+      "2020-10-30",
   ]
 
   # List of cloud/shadow mask products to use for creating mosaics.
@@ -74,7 +73,7 @@ mosaic:
   # in the "dates" list above are taken into account when creating a mosaic.
   # A higher value will reduce the chance of cloudy areas in the mosaic, at the
   # cost of performance and recentness.
-  range: 90
+  range: 60
   recentness: 1  # Recentness band: 0: don't create, 1: create for first band, 2: create for all bands
   output_bands: [  # List of bands to include in the mosaic product
       "B02_10m",

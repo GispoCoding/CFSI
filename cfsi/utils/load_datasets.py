@@ -33,6 +33,13 @@ def dataset_from_odcdataset(
         datasets = [datasets]
 
     product_name = datasets[0].metadata_doc["product"]["name"]
+    crs = datasets[0].crs
+    # TODO: read resolution from metadata_doc
+    # try:
+    #     xform = datasets[0].metadata_doc["grids"]["default"]["transform"]
+    #     res = (xform[0], xform[4])
+    # except KeyError:
+    res = (10, -10)
     debug_ds = None
     if DEBUG_BUFFER:
         bounds = datasets[0].bounds
@@ -48,12 +55,11 @@ def dataset_from_odcdataset(
                            x=x, y=y)
 
     real_ds = dc.load(product=product_name,
-                   dask_chunks={},
-                   measurements=measurements,
-                   output_crs="epsg:32635",  # TODO: read from dataset
-                   resolution=(-10, 10),  # TODO: read from dataset
-                   crs="epsg:32635",  # TODO: read from dataset
-                   datasets=datasets)
+                      dask_chunks={},
+                      measurements=measurements,
+                      output_crs=str(crs),
+                      resolution=res,
+                      datasets=datasets)
 
     if DEBUG_BUFFER:
         return debug_ds

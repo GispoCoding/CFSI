@@ -14,7 +14,9 @@ CLI_ACTIONS = (
     Action("clean", "Stops ODC database container and deletes data", [False]),
     Action("index", "Index S2 images to ODC from AWS S3", [False]),
     Action("mask", "Generate cloud and shadow masks", [False]),
-    Action("mosaic", "Create cloudless mosaics", [False])
+    Action("mosaic", "Create cloudless mosaics", [False]),
+    Action("deploy", "Deploy CFSI with TerraForm", [False]),
+    Action("destroy", "Destroy CFSI resources with TerraForm", [False])
 )
 
 

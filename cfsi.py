@@ -2,7 +2,7 @@
 """ Simple CLI for CFSI. Requires Docker and Docker-Compose """
 
 import subprocess
-from typing import Callable, Dict
+from typing import Callable, Dict, List
 
 from cfsi.utils.cli import CFSICLIParser, generate_container_name
 
@@ -23,7 +23,8 @@ class CFSI_CLI:
         """ Dict that maps actions to methods """
         return {"build": self.__build, "start": self.__start, "init": self.__initialize,
                 "stop": self.__stop, "clean": self.__clean, "index": self.__index,
-                "mask": self.__mask, "mosaic": self.__mosaic}
+                "mask": self.__mask, "mosaic": self.__mosaic, "deploy": self.__deploy,
+                "destroy": self.__destroy}
 
     def __run(self):
         try:
@@ -42,8 +43,9 @@ class CFSI_CLI:
     def __initialize(self):
         name = generate_container_name("CFSI-init")
         self.__wait_for_db(name)
-        self.__run_command("docker-compose", "run", "--name", name,
-                           "odc", "cfsi/scripts/setup/setup_odc.sh")
+        command = self.__compose_run(name) + [
+            "odc", "cfsi/scripts/setup/setup_odc.sh"]
+        self.__run_command(*command)
 
     def __stop(self):
         self.__run_command("docker-compose", "down")
@@ -54,14 +56,35 @@ class CFSI_CLI:
     def __index(self):
         name = generate_container_name("CFSI-index")
         self.__wait_for_db(name)
-        self.__run_command("docker-compose", "run", "--name", name,
-                           "odc", "python3", "-m", "cfsi.scripts.index.s2_index")
+        command = self.__compose_run(name) + [
+            "odc", "python3", "-m", "cfsi.scripts.index.s2_index"]
+        self.__run_command(*command)
 
     def __mask(self):
-        pass
+        name = generate_container_name("CFSI-mask")
+        command = self.__compose_run(name) + [
+            "odc", "python3", "-m", "cfsi.scripts.masks.create_masks"]
+        self.__run_command(*command)
 
     def __mosaic(self):
-        pass
+        name = generate_container_name("CFSI-mosaic")
+        command = self.__compose_run(name) + [
+            "odc", "python3", "-m", "cfsi.scripts.masks.create_mosaics"]
+        self.__run_command(*command)
+
+    def __deploy(self):
+        self.__run_command("terraform", "apply")
+
+    def __destroy(self):
+        self.__run_command("terraform", "destroy")
+
+    def __compose_run(self, name: str) -> List[str]:
+        base = ["docker-compose", "run", "--name", name]
+
+        if self.__optional_args.detach:
+            base.append("-d")
+
+        return base
 
     @staticmethod
     def __run_command(*command: str):

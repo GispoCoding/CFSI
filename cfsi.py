@@ -24,7 +24,7 @@ class CFSI_CLI:
         return {"build": self.__build, "start": self.__start, "init": self.__initialize,
                 "stop": self.__stop, "clean": self.__clean, "index": self.__index,
                 "mask": self.__mask, "mosaic": self.__mosaic, "deploy": self.__deploy,
-                "destroy": self.__destroy}
+                "destroy": self.__destroy, "log": self.__log}
 
     def __run(self):
         try:
@@ -78,11 +78,14 @@ class CFSI_CLI:
     def __destroy(self):
         self.__run_command("terraform", "destroy")
 
+    def __log(self):
+        self.__run_command("docker-compose", "logs", "-f")
+
     def __compose_run(self, name: str) -> List[str]:
-        base = ["docker-compose", "run", "--name", name]
+        base = ["docker-compose", "run", "--name", name, "--rm"]
 
         if self.__optional_args.detach:
-            base.append("-d")
+            base[-1] = "-d"
 
         return base
 
@@ -109,6 +112,10 @@ if __name__ == "__main__":
     try:
         CFSI_CLI()
         exit(0)
+
+    except KeyboardInterrupt:
+        print("Aborted")
+        exit(1)
     except Exception as error:
         print("Unhandled exception: ", error)
         exit(1)

@@ -16,7 +16,8 @@ CLI_ACTIONS = (
     Action("mask", "Generate cloud and shadow masks", [False]),
     Action("mosaic", "Create cloudless mosaics", [False]),
     Action("deploy", "Deploy CFSI with TerraForm", [False]),
-    Action("destroy", "Destroy CFSI resources with TerraForm", [False])
+    Action("destroy", "Destroy CFSI resources with TerraForm", [False]),
+    Action("log", "Display logs from Docker-Compose", [False])
 )
 
 

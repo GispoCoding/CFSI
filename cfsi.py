@@ -72,7 +72,8 @@ class CFSI_CLI:
 
         self.__check_action_combination_valid(actions)
 
-    def __check_action_combination_valid(self, actions: List[Action]):
+    @staticmethod
+    def __check_action_combination_valid(actions: List[Action]):
         conflicting_actions = []
         action_names = [action.name for action in actions]
 
@@ -97,17 +98,6 @@ class CFSI_CLI:
                 return action
         return None
 
-    def __args_to_methods(self, args: argparse.Namespace) -> List[Callable]:
-        """ Get list of methods to run for given arguments """
-        return [self.__arg_to_method(action) for action in args.actions]
-
-    def __arg_to_method(self, arg_action: str) -> Optional[Callable]:
-        """ Get method to run for given argument """
-        for action in self.__actions:
-            if action.name == arg_action:
-                return action.method
-        return None
-
     @staticmethod
     def __run_methods(methods: List[Callable]):
         try:
@@ -125,6 +115,7 @@ class CFSI_CLI:
 
     def __initialize(self):
         name = self.__generate_container_name("CFSI-init")
+        self.__wait_for_db(name)
         self.__run_command("docker-compose", "run", "--name", name,
                            "odc", "cfsi/scripts/setup/setup_odc.sh")
 
@@ -136,6 +127,7 @@ class CFSI_CLI:
 
     def __index(self):
         name = self.__generate_container_name("CFSI-index")
+        self.__wait_for_db(name)
         self.__run_command("docker-compose", "run", "--name", name,
                            "odc", "python3", "-m", "cfsi.scripts.index.s2_index")
 
@@ -152,6 +144,14 @@ class CFSI_CLI:
             subprocess.run(command_list, check=True)
         except subprocess.CalledProcessError as err:
             print('\n', err)
+
+    def __wait_for_db(self, name: str = ""):
+        if name:
+            name += "_waiter"
+        else:
+            name = self.__generate_container_name("CFSI-waiter")
+        self.__run_command("docker-compose", "run", "--name", name,
+                           "odc", "cfsi/utils/wait-for-it.sh", "db:5432")
 
     @staticmethod
     def __generate_container_name(name):

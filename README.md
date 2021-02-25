@@ -4,7 +4,7 @@ CFSI is a set of Python scripts and tools designed to automatically generate clo
 
 ## Configuration
 
-CFSI can be configured using a `cfsi_config.yaml` file. A sample configuration is provided in the repository with comments explaining most options. The configuration file syntax is subject to change without notice until a possible stable release in the future.
+CFSI can be configured using a `config.yaml` file. A sample configuration is provided in the repository with comments explaining most options. The configuration file syntax is subject to change without notice until a possible stable release in the future.
 
 ## Deployment
 

@@ -37,8 +37,8 @@ def load_config() -> SimpleNamespace:
         config_file_name = os.environ["CFSI_CONFIG_FILE"]
     except KeyError:
         LOGGER.warning("Environment variable CFSI_CONFIG_FILE not set, "
-                       "trying to load configuration from cfsi_config.yaml")
-        config_file_name = "cfsi_config.yaml"
+                       "trying to load configuration from config.yaml")
+        config_file_name = "config.yaml"
     config_path = Path(cfsi_base_dir / config_file_name)
     config_data = load_config_file(config_path)
     return dict_to_namespace(config_data)

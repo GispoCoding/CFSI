@@ -43,7 +43,7 @@ class CFSI_CLI:
     def __initialize(self):
         name = generate_container_name("CFSI-init")
         self.__wait_for_db(name)
-        command = self.__compose_run(name) + [
+        command = self.__generate_compose_run_command(name) + [
             "odc", "cfsi/scripts/setup/setup_odc.sh"]
         self.__run_command(*command)
 
@@ -56,19 +56,19 @@ class CFSI_CLI:
     def __index(self):
         name = generate_container_name("CFSI-index")
         self.__wait_for_db(name)
-        command = self.__compose_run(name) + [
+        command = self.__generate_compose_run_command(name) + [
             "odc", "python3", "-m", "cfsi.scripts.index.s2_index"]
         self.__run_command(*command)
 
     def __mask(self):
         name = generate_container_name("CFSI-mask")
-        command = self.__compose_run(name) + [
+        command = self.__generate_compose_run_command(name) + [
             "odc", "python3", "-m", "cfsi.scripts.masks.create_masks"]
         self.__run_command(*command)
 
     def __mosaic(self):
         name = generate_container_name("CFSI-mosaic")
-        command = self.__compose_run(name) + [
+        command = self.__generate_compose_run_command(name) + [
             "odc", "python3", "-m", "cfsi.scripts.masks.create_mosaics"]
         self.__run_command(*command)
 
@@ -81,14 +81,6 @@ class CFSI_CLI:
     def __log(self):
         self.__run_command("docker-compose", "logs", "-f")
 
-    def __compose_run(self, name: str) -> List[str]:
-        base = ["docker-compose", "run", "--name", name, "--rm"]
-
-        if self.__optional_args.detach:
-            base[-1] = "-d"
-
-        return base
-
     @staticmethod
     def __run_command(*command: str):
         try:
@@ -98,14 +90,24 @@ class CFSI_CLI:
         except subprocess.CalledProcessError as err:
             print('\n', err)
 
+    def __generate_compose_run_command(self, name: str) -> List[str]:
+        """ Generates a base for docker-compose run commands """
+        base = ["docker-compose", "run", "--name", name, "--rm"]
+
+        if self.__optional_args.detach and "waiter" not in name:
+            base[-1] = "-d"
+
+        return base
+
     def __wait_for_db(self, name: str = ""):
         if name:
             name += "_waiter"
         else:
             name = generate_container_name("CFSI-waiter")
 
-        self.__run_command("docker-compose", "run", "--name", name,
-                           "odc", "cfsi/utils/wait-for-it.sh", "db:5432")
+        command = self.__generate_compose_run_command(name) + [
+            "odc", "cfsi/utils/wait-for-it.sh", "db:5432"]
+        self.__run_command(*command)
 
 
 if __name__ == "__main__":

@@ -142,11 +142,17 @@ class S2CloudlessGenerator:
         new_rows[:] = 2
         new_cols[:] = 2
 
-        if y > 0:
+        x, y = int(x), int(y)
+        if y == 0:
+            shadow_mask_array = cloud_mask_array
+        elif y > 0:
             shadow_mask_array = np.append(cloud_mask_array, new_rows, axis=0)[int(y):, :]
         else:
             shadow_mask_array = np.append(new_rows, cloud_mask_array, axis=0)[:-int(y), :]
-        if x > 0:
+
+        if x == 0:
+            pass
+        elif x > 0:
             shadow_mask_array = np.append(new_cols, shadow_mask_array, axis=1)[:, :-int(x)]
         else:
             shadow_mask_array = np.append(shadow_mask_array, new_cols, axis=1)[:, -int(x):]

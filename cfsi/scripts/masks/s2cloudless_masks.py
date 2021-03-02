@@ -155,13 +155,12 @@ class S2CloudlessGenerator:
         dark_pixels = np.squeeze(np.where(nir_array <= dark_pixel_threshold, 1, 0))
         return np.where((cloud_mask_array == 0) & (shadow_mask_array == 1) & (dark_pixels == 1), 1, 0)
 
-    @staticmethod
-    def _write_mask_arrays(dataset: ODCDataset,
+    def _write_mask_arrays(self, dataset: ODCDataset,
                            mask_arrays: (np.ndarray, np.ndarray)) -> Dict[str, Path]:
         """ Writes cloud and shadow masks to files """
         masks = {"clouds": mask_arrays[0],
                  "shadows": mask_arrays[1]}
-        output_mask_files = odcdataset_to_tif(dataset, masks, "s2cloudless", gdal.GDT_Byte)
+        output_mask_files = odcdataset_to_tif(dataset, masks, self.mask_product_name, gdal.GDT_Byte)
         output_masks = {
             "cloud_mask": output_mask_files[0],
             "shadow_mask": output_mask_files[1]}

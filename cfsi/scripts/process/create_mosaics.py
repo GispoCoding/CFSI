@@ -15,3 +15,7 @@ def create_mosaics():
             mosaic_ds = mosaic_creator.create_mosaic_dataset()
             output_mosaic_path = mosaic_creator.write_mosaic_to_file(mosaic_ds)
             MosaicIndexer().index(mosaic_ds, output_mosaic_path)
+
+
+if __name__ == "__main__":
+    create_mosaics()

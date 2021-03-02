@@ -14,8 +14,6 @@ RUN apt-get update && \
 ENV CPL_LOG=/dev/null
 
 WORKDIR /app
-ARG CACHE_DATE=2021-01-01
-COPY cfsi cfsi
 
 USER app
 CMD cfsi/utils/wait-for-it.sh db:5432 -- cfsi/scripts/setup/setup_odc.sh

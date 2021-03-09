@@ -12,6 +12,14 @@ CFSI can be configured using a `config.yaml` file. A sample configuration is pro
 
 The easiest way to setup CFSI locally is to use Docker and Docker-Compose. The compose file includes both a backend PostGIS database service and a ODC Python environment. 
 
+#### Dependencies
+
+- Docker
+- Docker-Compose
+- Python 3.7+ (for using the CLI)
+
+#### Configuration and setup
+
 First, edit the variables in the .env file to match your system, this applies mainly to the variables ending with `_HOST`.
 
 Then, start CFSI with:
@@ -23,21 +31,39 @@ docker-compose up -d
 
 A Terraform configuration is also provided to automatically launch and manage CFSI on AWS or other cloud platforms supported by TF.
 
+#### Dependencies
+
+- Terraform 0.14+
+
+#### Configuration and setup
+
 Set local environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` in your profile. To deploy CFSI on AWS, run:
 ```shell
 terraform init
 terraform apply
 ```
 
-### Conda
+### Local
 
-Another way to set up CFSI locally is to use Conda. Create a new Conda environment using the provided environment.yml file.
+The easiest way to set up CFSI locally without containers is to use Conda. Create a new Conda environment using the provided environment.yml file. You also need to set up a PostGIS database.
+
+#### Dependencies
+
+For a conda-based setup (recommended) using a local database backend:
+
+- Anaconda/Miniconda
+- PostgreSQL 12+
+- PostGIS 3+ (optional for datacube-ows)
+
+#### Configuration and setup
+
+Follow the ODC [installation guide](https://datacube-core.readthedocs.io/en/latest/ops/conda.html) (using the environment.yml file from this repository) and the [database setup guide](https://datacube-core.readthedocs.io/en/latest/ops/db_setup.html).
 
 ## To-Do
 
 The project is still under active development and things may and will change without notice. The to-do list before a possible future stable release includes:
 
-- [ ] CLI for common operations such as generating mosaics and indexing new S2 imagery to ODC
+- [x] CLI for common operations such as generating mosaics and indexing new S2 imagery to ODC
 - [ ] Support for other cloud masking methods besides s2cloudless
 - [ ] User testing with different areas and configurations
 - [ ] Automated test framework and unit tests

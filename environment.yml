@@ -1,7 +1,14 @@
 name: odc
+channels:
+  - conda-forge
+  - default
 dependencies:
   - python=3.8
   - boto3=1.16.*
   - datacube=1.8.3
   - gdal=3.*
   - s2cloudless=1.4.*
+  - python-fmask=0.5.*
+  - sentinelhub=3.1.*
+  - rasterio=1.1.*
+  - numpy=1.19.*

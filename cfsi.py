@@ -63,7 +63,7 @@ class CFSI_CLI:
     def __mask(self):
         name = generate_container_name("CFSI-mask")
         command = self.__generate_compose_run_command(name) + [
-            "odc", "python3", "-m", "cfsi.scripts.masks.create_masks"]
+            "odc", "python3", "-m", "cfsi.scripts.process.create_masks"]
         self.__run_command(*command)
 
     def __mosaic(self):

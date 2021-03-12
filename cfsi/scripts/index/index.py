@@ -30,14 +30,62 @@ class ODCIndexer:
             aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
             region_name='eu-central-1')
 
-    def add_dataset(self, doc: Dict, uri: str = "", **kwargs) -> (ODCDataset, Union[Exception, None]):
+    def index_masks(self, l1c_dataset: ODCDataset, mask_output: Dict[str, Path]) -> ODCDataset:
+        """ Indexes output cloud masks to ODC.
+        :param l1c_dataset: L1C ODCDataset,
+        :param mask_output: dict of {mask name: mask file path},
+         e.g. {"cloud_mask": Path("/output/cloud_mask.tif")} """
+
+        eo3_doc = self.generate_eo3_dataset_doc(l1c_dataset, mask_output)
+        dataset, exception = self.add_dataset(eo3_doc)
+
+        if exception:
+            raise Exception(exception)  # TODO: custom exception
+        return dataset
+
+    def generate_eo3_dataset_doc(self, l1c_dataset: ODCDataset, masks: Dict[str, Path]) -> Dict:
+        """ Overridden in subclasses """
+        pass
+
+    @staticmethod
+    def _generate_mask_uri(masks: Dict[str, Path]):
+        protocol = "file://"  # TODO: handle writing to S3
+        base_file_path = list(masks.values())[0].parent
+        return protocol + str(base_file_path)
+
+    def generate_mask_properties(self, l1c_dataset: ODCDataset) -> (Dict, Dict):
+        l1c_uri = l1c_dataset.uris[0]
+        l1c_metadata_uri = l1c_uri + "/metadata.xml"
+        l2a_dataset_id = self.l2a_dataset_from_l1c(l1c_dataset).id
+
+        l1c_metadata_doc = self.s3obj_to_etree(self.get_object_from_s3_uri(
+            l1c_metadata_uri, RequestPayer="requester"))
+        tile_metadata = self.read_s2_tile_metadata(l1c_metadata_doc)
+        properties = {
+            "tile_id": tile_metadata.tile_id,
+            "crs": tile_metadata.crs_code,
+            "eo:instrument": "MSI",
+            "eo:platform": "SENTINEL-2A",  # TODO: read A or B from metadata
+            "odc:file_format": "JPEG2000",
+            "datetime": tile_metadata.sensing_time,
+            "odc:region_code": "".join(Path(l1c_uri).parts[3:6]),
+            "mean_sun_zenith": tile_metadata.sun_zenith,
+            "mean_sun_azimuth": tile_metadata.sun_azimuth,
+            "cloudy_pixel_percentage": tile_metadata.cloudy_pixel_percentage,
+            "s3_key": "/".join(Path(l1c_uri).parts[2:]),  # TODO: replace with urlparse
+            "l2a_dataset_id": l2a_dataset_id,
+        }
+        grids = self.read_s2_grid_metadata(l1c_metadata_doc)
+        return properties, grids
+
+    def add_dataset(self, eo3_doc: Dict, uri: str = "", **kwargs) -> (ODCDataset, Union[Exception, None]):
         """ Adds dataset to dcIndex """
         if not uri:
-            uri = doc["uri"]
+            uri = eo3_doc["uri"]
         LOGGER.debug(f"Indexing {uri}")
         index = self.dc.index
         resolver = Doc2Dataset(index, **kwargs)
-        dataset, err = resolver(doc, uri)
+        dataset, err = resolver(eo3_doc, uri)
         if err is not None:
             LOGGER.error(f"Error indexing {uri}: {err}")
             return dataset, err
@@ -51,8 +99,8 @@ class ODCIndexer:
 
         return dataset, err
 
-    def dataset_exists(self, id_: str) -> bool:
-        """ Check if dataset URI is already indexed """
+    def dataset_id_exists(self, id_: str) -> bool:
+        """ Check if dataset id is already in index """
         index = self.dc.index
         if not index.datasets.get(id_):
             return False

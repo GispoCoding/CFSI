@@ -61,6 +61,15 @@ def gdal_params_for_xadataset(dataset: xa.Dataset):
     return geo_transform, projection
 
 
+def check_existing_mask_files(dataset: ODCDataset, mask_product_name: str) -> bool:
+    """ Checks if a cloud mask for given dataset already exists """
+    # TODO: check if mask exists in index
+    mask_output_directory = generate_s2_file_output_path(dataset, mask_product_name).parent
+    if mask_output_directory.exists():
+        return True
+    return False
+
+
 def generate_s2_file_output_path(dataset: ODCDataset,
                                  product_name: str = "",
                                  band_name: str = "") -> Path:
@@ -68,13 +77,12 @@ def generate_s2_file_output_path(dataset: ODCDataset,
      :param dataset: ODCDataset being written
      :param product_name: product name being written. each product goes to its own sub-directory, optional
      :param band_name: name of band being written. band name is appended to filename, optional """
-    base_path = Path(os.environ["CFSI_OUTPUT_CONTAINER"])  # TODO: write to S3
+    base_output_path = Path(os.environ["CFSI_OUTPUT_CONTAINER"])  # TODO: write to S3
     tile_id, s3_key = get_s2_tile_ids(dataset)
-    file_name = f"{tile_id}"
     if band_name:
-        file_name += f"_{band_name}"
-    file_name += ".tif"
-    output_dir = Path(base_path / s3_key).joinpath(product_name, file_name)
+        tile_id += f"_{band_name}"
+    tile_id += ".tif"
+    output_dir = Path(base_output_path / s3_key).joinpath(product_name, tile_id)
     return output_dir
 
 
@@ -82,8 +90,8 @@ def get_s2_tile_ids(dataset: ODCDataset) -> (str, str):
     """ Returns tile_id and s3_key from dataset metadata doc """
     tile_props = dataset.metadata_doc["properties"]
     tile_id = tile_props["tile_id"]
-    tile_path = tile_props["s3_key"]
-    return tile_id, tile_path
+    s3_key = tile_props["s3_key"]
+    return tile_id, s3_key
 
 
 def odcdataset_to_multiple_tif(dataset: ODCDataset,
@@ -111,14 +119,17 @@ def odcdataset_to_multiple_tif(dataset: ODCDataset,
 
 def write_l1c_dataset(dataset: ODCDataset, rgb: bool = True):
     """ Writes a ODC S2 L1C dataset to a rgb .tif file """
-    LOGGER.info(f"Writing L1C output for dataset {dataset}")
+    measurements = None
+    product_name = "l1c"
     if rgb:
         measurements = ['B02', 'B03', 'B04']
         product_name = "rgb"
-    else:
-        measurements = None
-        product_name = "l1c"
+    output_dir = generate_s2_file_output_path(dataset, product_name).parent
+    if output_dir.exists():
+        LOGGER.info(f"Directory {product_name} for L1C output already exists, skipping")
+        return
 
+    LOGGER.info(f"Writing L1C output for dataset {dataset}")
     ds = dataset_from_odcdataset("s2a_l1c_granule", dataset, measurements=measurements)
     data = [np.squeeze(ds[band].values / 10000) for band in ds.data_vars]
     odcdataset_to_tif(dataset, data, product_name=product_name)

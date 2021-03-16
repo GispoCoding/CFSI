@@ -26,7 +26,7 @@ RUN curl -s https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.s
 
 ENV PATH $CONDA_DIR/bin:$PATH
 ENV ENV_PATH $HOME/cfsi_env
-COPY environment.yml requirements.txt /tmp/
+COPY environment.yml /tmp/
 
 RUN conda env create -p $ENV_PATH --file /tmp/environment.yml --force && \
     conda clean --all --yes

@@ -7,15 +7,15 @@ services:
         environment:
             - AWS_ACCESS_KEY_ID
             - AWS_SECRET_ACCESS_KEY
-            - DATACUBE_DB_URL=postgresql://${DB_USERNAME}:${DB_PASSWORD}@db:${DB_PORT}/${DB_USERNAME}
         depends_on:
             - db
         networks:
             - cfsi
         volumes:
+            - ./cfsi:${CFSI_BASE_CONTAINER}
             - ${CFSI_OUTPUT_HOST}:${CFSI_OUTPUT_CONTAINER}
             - ${CFSI_CONFIG_FILE}:${CFSI_BASE_CONTAINER}/${CFSI_CONFIG_FILE}
-            - ./cfsi:/app/cfsi
+
     db:
         environment:
             - POSTGRES_USER=${DB_USERNAME}

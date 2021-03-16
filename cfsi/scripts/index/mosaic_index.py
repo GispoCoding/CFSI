@@ -17,10 +17,10 @@ class MosaicIndexer(ODCIndexer):
     def __init__(self):
         super().__init__("MosaicIndexer")
 
-    def index(self, mosaic_ds: xa.Dataset, file_path: Path):
+    def index_mosaic(self, mosaic_ds: xa.Dataset, file_path: Path):
         """ Create new cloudless mosaic ODCDataset from mosaic in Path """
-        eo3 = self.generate_eo3_dataset_doc(mosaic_ds, file_path)
-        dataset, exception = self.add_dataset(eo3)
+        eo3_doc = self.generate_eo3_dataset_doc(mosaic_ds, file_path)
+        dataset, exception = self.add_dataset(eo3_doc)
         if not exception:
             LOGGER.info(f"Indexed cloudless mosaic {dataset}")
 

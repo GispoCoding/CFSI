@@ -1,7 +1,6 @@
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict
 from logging import DEBUG
-from datacube import Datacube
 from datacube.model import Dataset as ODCDataset
 import numpy as np
 from s2cloudless import S2PixelCloudDetector
@@ -9,106 +8,52 @@ from osgeo import gdal
 
 from cfsi import config
 from cfsi.scripts.index.s2cloudless_index import S2CloudlessIndexer
+from cfsi.scripts.masks.cloud_mask_generator import CloudMaskGenerator
 from cfsi.utils.load_datasets import dataset_from_odcdataset
 from cfsi.utils.logger import create_logger
-from cfsi.utils.write_utils import generate_s2_file_output_path, odcdataset_to_tif, write_l1c_dataset
+from cfsi.utils.write_utils import odcdataset_to_tif, get_s2_tile_ids
 
 LOGGER = create_logger("s2cloudless", level=DEBUG)
 
 
-class S2CloudlessGenerator:
+class S2CloudlessGenerator(CloudMaskGenerator):
 
     def __init__(self):
         """ Constructor method """
+        super().__init__()
         self.max_iterations = config.masks.s2cloudless_masks.max_iterations
-        self.i = 1
-        self.indexed_masks: List[ODCDataset] = []
-        self.base_product_name = "s2a_level1c_granule"
         self.mask_product_name = "s2a_level1c_s2cloudless"
 
-    def create_masks(self) -> List[ODCDataset]:
-        """ Creates masks based on config """
-        l1c_datasets = self.__get_l1c_datasets()
-        if len(l1c_datasets) < self.max_iterations or not self.max_iterations:
-            self.max_iterations = len(l1c_datasets)
-
-        for dataset in l1c_datasets:
-            if not self.__should_process(dataset):
-                continue
-
-            mask_arrays = self._process_dataset(dataset)
-            output_masks = self._write_mask_arrays(dataset, mask_arrays)
-            self.indexed_masks += S2CloudlessIndexer().index({dataset: output_masks})
-
-            if self.i > self.max_iterations:
-                LOGGER.warning(f"Reached maximum iterations count {self.max_iterations}")
-                break
-            self.i += 1
-
-        if len(self.indexed_masks) == 0:
-            LOGGER.warning("No new masks generated")
-        return self.indexed_masks
-
-    def __get_l1c_datasets(self) -> List[ODCDataset]:
-        """ Gets all L1C datasets from ODC Index """
-        dc = Datacube(app="s2cloudless_mosaic")
-        l1c_datasets = dc.find_datasets(product=self.base_product_name)
-        return l1c_datasets
-
-    def __should_process(self, dataset: ODCDataset) -> bool:
-        """ Checks if masks should be generated for given ODCDataset """
-        if self.__check_existing_masks(dataset):
-            LOGGER.info(f"S2Cloudless masks for dataset {dataset} already exist")
+    def _create_mask(self, l1c_dataset: ODCDataset) -> bool:
+        """ Creates a single mask, returns bool indicating whether to continue iteration """
+        if not config.masks.s2cloudless_masks.generate:
+            LOGGER.info("Skipping s2cloudless mask generation due to config")
             return False
-        metadata_cloud_percentage, in_threshold = self.__check_clouds_in_threshold(dataset)
-        if not in_threshold:
-            return False
-        return True
-
-    def __check_existing_masks(self, dataset: ODCDataset) -> bool:
-        """ Checks if a S2Cloudless mask for given dataset already exists """
-        # TODO: check if mask exists in index
-        output_directory = generate_s2_file_output_path(dataset, self.mask_product_name).parent
-        if output_directory.exists():
+        if not self._should_process(l1c_dataset):
             return True
-        return False
 
-    @staticmethod
-    def __check_clouds_in_threshold(dataset: ODCDataset) -> (float, bool):
-        """ Checks if metadata cloud percentage of given dataset is within threshold """
-        tile_metadata = dataset.metadata_doc["properties"]
-        cloud_percent = tile_metadata["cloudy_pixel_percentage"]
-        max_cloud = config.masks.s2cloudless_masks.max_cloud_threshold
-        min_cloud = config.masks.s2cloudless_masks.min_cloud_threshold
-        in_threshold = True
+        LOGGER.info(f"Iteration {self.i}/{self.max_iterations}: {l1c_dataset}")
 
-        if cloud_percent > max_cloud:
-            LOGGER.info("Metadata cloud percentage greater than max threshold value: " +
-                        f"{max_cloud} < {cloud_percent}")
-            in_threshold = False
+        mask_arrays = self.__process_dataset(l1c_dataset)
+        output_masks = self.__write_mask_arrays(l1c_dataset, mask_arrays)
+        self.indexed_masks.append(S2CloudlessIndexer().index_masks(l1c_dataset, output_masks))
 
-        elif cloud_percent < min_cloud:
-            LOGGER.info("Metadata cloud percentage lower than min threshold value: " +
-                        f"{min_cloud} > {cloud_percent}")
-            in_threshold = False
+        return self._continue_iteration()
 
-        return cloud_percent, in_threshold
-
-    def _process_dataset(self, dataset: ODCDataset) -> (np.ndarray, np.ndarray):
+    def __process_dataset(self, dataset: ODCDataset) -> (np.ndarray, np.ndarray):
         """ Generate cloud and cloud shadow masks for a single datacube dataset """
-        LOGGER.info(f"Iteration {self.i}/{self.max_iterations}: {dataset}")
-        tile_props = dataset.metadata_doc["properties"]
-        s3_key = tile_props["s3_key"]
+        _, s3_key = get_s2_tile_ids(dataset)
+        mean_sun_azimuth = dataset.metadata_doc["properties"]["mean_sun_azimuth"]
 
-        ds = dataset_from_odcdataset("s2a_level1c_granule", dataset)
+        ds = dataset_from_odcdataset(self.l1c_product_name, dataset)
 
         LOGGER.info("Fetching data to array")
         array = np.moveaxis(ds.to_array().values.astype("float64") / 10000, 0, -1)
-        LOGGER.info(f"Generating cloud masks for {s3_key}")
+        LOGGER.info(f"Generating s2cloudless masks for {s3_key}")
         cloud_masks = self.__generate_cloud_masks(array)
         LOGGER.info(f"Generating shadow masks for {s3_key}")
         shadow_masks = self.__generate_cloud_shadow_masks(
-            array[:, :, :, 7], cloud_masks, tile_props["mean_sun_azimuth"])
+            array[:, :, :, 7], cloud_masks, mean_sun_azimuth)
         return cloud_masks, shadow_masks
 
     @staticmethod
@@ -161,8 +106,8 @@ class S2CloudlessGenerator:
         dark_pixels = np.squeeze(np.where(nir_array <= dark_pixel_threshold, 1, 0))
         return np.where((cloud_mask_array == 0) & (shadow_mask_array == 1) & (dark_pixels == 1), 1, 0)
 
-    def _write_mask_arrays(self, dataset: ODCDataset,
-                           mask_arrays: (np.ndarray, np.ndarray)) -> Dict[str, Path]:
+    def __write_mask_arrays(self, dataset: ODCDataset,
+                            mask_arrays: (np.ndarray, np.ndarray)) -> Dict[str, Path]:
         """ Writes cloud and shadow masks to files """
         masks = {"clouds": mask_arrays[0],
                  "shadows": mask_arrays[1]}
@@ -171,9 +116,10 @@ class S2CloudlessGenerator:
             "cloud_mask": output_mask_files[0],
             "shadow_mask": output_mask_files[1]}
 
-        if config.masks.s2cloudless_masks.write_rgb:
-            write_l1c_dataset(dataset)
-        if config.masks.s2cloudless_masks.write_l1c:
-            write_l1c_dataset(dataset, rgb=False)
+        self.write_l1c_reference(dataset)
 
         return output_masks
+
+
+if __name__ == "__main__":
+    S2CloudlessGenerator().create_masks()

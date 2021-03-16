@@ -37,18 +37,26 @@ index:
 
 masks:
   # Cloud mask generation configuration
+
+  # Maximum and minimum cloudiness percentages in Sentinel-2 tile metadata.
+  # Tiles with cloudiness percentages above or below the threshold are
+  # skipped, and no cloud/shadow masks are generated for them.
+  # Setting these to 100.0 and 0.0 means no tiles are skipped.
+  max_cloud_threshold: 100.0
+  min_cloud_threshold: 0.0
+
+  write_rgb: true                  # write l1c rgb for validating results
+  write_l1c: false                 # write l1c all bands for validating results
+
   s2cloudless_masks:
+    generate: true                # generate s2cloudless masks
     cloud_threshold: 0.3           # cloud threshold value for s2cloudless
-    # Maximum and minimum cloudiness percentages in Sentinel-2 tile metadata.
-    # Tiles with cloudiness percentages above or below the threshold are
-    # skipped, and no cloud/shadow masks are generated for them.
-    # Setting these to 100.0 and 0.0 means no tiles are skipped.
-    max_cloud_threshold: 100.0
-    min_cloud_threshold: 0.0
-    cloud_projection_distance: 30  # maximum distance to search for cloud shadows
+    cloud_projection_distance: 30  # maximum distance to search for cloud shadows in 10m pixels
     dark_pixel_threshold: 0.25     # max band 8 value for pixel to be considered dark
-    write_rgb: false               # write l1c rgb for validating results
-    write_l1c: false               # write l1c all bands for validating results
+    max_iterations: 0              # max. nr. of cloud masks to create at once. 0 = unlimited
+
+  fmask_masks:
+    generate: true                 # generate fmask masks
     max_iterations: 0              # max. nr. of cloud masks to create at once. 0 = unlimited
 
 mosaic:
@@ -74,8 +82,8 @@ mosaic:
   # A higher value will reduce the chance of cloudy areas in the mosaic, at the
   # cost of performance and recentness.
   range: 60
-  recentness: 1  # Recentness band: 0: don't create, 1: create for first band, 2: create for all bands
-  output_bands: [  # List of bands to include in the mosaic product
+  recentness: 1          # Recentness band: 0: don't create, 1: create for first band, 2: create for all bands
+  output_bands: [        # List of bands to include in the mosaic product
       "B02_10m",
       "B03_10m",
       "B04_10m",

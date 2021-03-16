@@ -21,29 +21,30 @@ class S2Indexer(ODCIndexer):
     def __init__(self, name: str = "S2Indexer"):
         super().__init__(name)
 
-    def index(self):
-        """ Index S2 datasets to from S3 ODC """
+    def add_to_index(self):
+        """ Index S2 datasets from S3 to ODC """
         LOGGER.info("Indexing Sentinel 2 datasets from S3")
         for bucket_name in config.index.s2_index.s3_buckets:
             LOGGER.info(f"Indexing bucket {bucket_name}")
-            self.index_s3_bucket(bucket_name)
+            self.__index_s3_bucket(bucket_name)
             LOGGER.info(f"Bucket {bucket_name} indexed")
 
-    def index_s3_bucket(self, bucket_name: str):
+    def __index_s3_bucket(self, bucket_name: str):
         """ Indexes the contents of a single S3 bucket to ODC """
         LOGGER.info("Generating indexing queue from config")
-        queue = self.generate_indexing_queue(bucket_name)
+        queue = self.__generate_s3_indexing_queue(bucket_name)
         q_size = queue.qsize()
+
         LOGGER.info(f"Indexing {q_size} {bucket_name} tiles")
-        self.index_from_s3(bucket_name, queue)  # TODO: multithread if necessary
+        self.__index_from_s3(bucket_name, queue)  # TODO: multithread if necessary
         LOGGER.info(f"Finished indexing {q_size} {bucket_name} tiles")
 
-    def generate_indexing_queue(self, bucket_name: str) -> Queue:
+    def __generate_s3_indexing_queue(self, bucket_name: str) -> Queue:
         """ Generates and returns a queue of S3 keys to index """
         s3 = self.session.resource('s3')
         bucket = s3.Bucket(bucket_name)
         queue = Queue()
-        prefixes = self.generate_s3_prefixes()
+        prefixes = self.__generate_s3_prefixes()
         for prefix in prefixes:
             LOGGER.info(f"Fetching metadata for s3://{bucket_name}/{prefix}/*")
             for obj in bucket.objects.filter(Prefix=prefix, RequestPayer="requester"):
@@ -54,7 +55,7 @@ class S2Indexer(ODCIndexer):
         return queue
 
     @staticmethod
-    def generate_s3_prefixes() -> List[str]:
+    def __generate_s3_prefixes() -> List[str]:
         """ Generates a list of S3 bucket prefixes based on config """
         prefixes = []
         for grid in config.index.s2_index.grids:
@@ -66,7 +67,7 @@ class S2Indexer(ODCIndexer):
                              for month in config.index.s2_index.months]
         return prefixes
 
-    def index_from_s3(self, bucket_name: str, queue):
+    def __index_from_s3(self, bucket_name: str, queue):
         """ Indexes S2 tiles from S3 bucket from a queue of keys """
         while True:
             try:
@@ -78,11 +79,11 @@ class S2Indexer(ODCIndexer):
                 uri = self.generate_s3_uri(bucket_name, key)
                 id_: str = md5(uri.encode("utf-8")).hexdigest()
 
-                if self.dataset_exists(id_):
+                if self.dataset_id_exists(id_):
                     LOGGER.info(f"Dataset {key} with id {id_} already indexed, skipping")
                     queue.task_done()
                 else:
-                    dataset_doc = self.generate_eo3_dataset_doc(bucket_name, uri, data)
+                    dataset_doc = self.__generate_eo3_dataset_doc(bucket_name, uri, data)
                     self.add_dataset(dataset_doc, uri=uri)
                     queue.task_done()
             except Empty:
@@ -90,13 +91,13 @@ class S2Indexer(ODCIndexer):
             except EOFError:
                 break
 
-    def generate_eo3_dataset_doc(self, bucket_name: str, uri: str, data: ElementTree) -> dict:
+    def __generate_eo3_dataset_doc(self, bucket_name: str, uri: str, data: ElementTree) -> dict:
         """ Generates an eo3 metadata document for ODC indexing """
         tile_metadata = self.read_s2_tile_metadata(data)
         grids = self.read_s2_grid_metadata(data)
 
         eo3 = {
-            "id": md5(uri.encode("utf-8")).hexdigest(),
+            "id": md5(str(uri).encode("utf-8")).hexdigest(),
             "$schema": "https://schemas.opendatacube.org/dataset",
             "product": {
                 "name": S2_PRODUCT_NAMES[bucket_name],
@@ -116,7 +117,7 @@ class S2Indexer(ODCIndexer):
                     "transform": grids["60"]["trans"],
                 },
             },
-            "measurements": self.generate_measurements(bucket_name),
+            "measurements": self.__generate_s2_measurements(bucket_name),
             "location": uri,
             "properties": {
                 "tile_id": tile_metadata.tile_id,
@@ -136,7 +137,7 @@ class S2Indexer(ODCIndexer):
         return self.relative_s3_keys_to_absolute(eo3, uri)
 
     @staticmethod
-    def generate_measurements(bucket_name: str) -> Dict:
+    def __generate_s2_measurements(bucket_name: str) -> Dict:
         """ Generates a measurement dict for eo3 document """
         res = {}
         for measurement in S2_MEASUREMENTS[bucket_name]:
@@ -156,4 +157,4 @@ class S2Indexer(ODCIndexer):
 
 if __name__ == "__main__":
     LOGGER.info("Starting S2 indexer")
-    S2Indexer().index()
+    S2Indexer().add_to_index()

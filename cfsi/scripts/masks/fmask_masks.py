@@ -23,6 +23,9 @@ class FmaskGenerator(CloudMaskGenerator):
         self.mask_product_name = "s2a_level1c_fmask"
 
     def _create_mask(self, l1c_dataset: ODCDataset) -> bool:
+        if not config.masks.fmask_masks.generate:
+            LOGGER.info("Skipping Fmask mask generation due to config")
+            return False
         if not self._should_process(l1c_dataset):
             return True
 
@@ -38,8 +41,6 @@ class FmaskGenerator(CloudMaskGenerator):
         safe_tile_path = self.fetch_s2_to_safe(tile_id)
 
         mask_output_path = generate_s2_file_output_path(dataset, self.mask_product_name)
-        mask_output_path = mask_output_path.with_suffix('.img')
-        raise Exception(f"fmask mask_output_path: {mask_output_path}")
         fmask_args = ["--granuledir", str(safe_tile_path), "-o", str(mask_output_path), "-v"]
 
         if not mask_output_path.parent.exists():

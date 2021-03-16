@@ -26,6 +26,9 @@ class S2CloudlessGenerator(CloudMaskGenerator):
 
     def _create_mask(self, l1c_dataset: ODCDataset) -> bool:
         """ Creates a single mask, returns bool indicating whether to continue iteration """
+        if not config.masks.s2cloudless_masks.generate:
+            LOGGER.info("Skipping s2cloudless mask generation due to config")
+            return False
         if not self._should_process(l1c_dataset):
             return True
 

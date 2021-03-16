@@ -6,7 +6,7 @@ from datacube.model import Dataset as ODCDataset
 
 from cfsi import config
 from cfsi.utils.logger import create_logger
-from cfsi.utils.write_utils import check_existing_mask_files, write_l1c_dataset
+from cfsi.utils.write_utils import check_existing_mask_directory, write_l1c_dataset
 
 LOGGER = create_logger("fmask", level=DEBUG)
 
@@ -48,7 +48,7 @@ class CloudMaskGenerator:
 
     def _should_process(self, dataset: ODCDataset) -> bool:
         """ Checks if masks should be generated for given ODCDataset """
-        if check_existing_mask_files(dataset, self.mask_product_name):
+        if check_existing_mask_directory(dataset, self.mask_product_name):
             LOGGER.info(f"{self.mask_product_name} files for dataset {dataset} already exist, skipping")
             return False
         metadata_cloud_percentage, in_threshold = self._check_clouds_in_threshold(dataset)

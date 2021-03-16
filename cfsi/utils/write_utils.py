@@ -61,8 +61,8 @@ def gdal_params_for_xadataset(dataset: xa.Dataset):
     return geo_transform, projection
 
 
-def check_existing_mask_files(dataset: ODCDataset, mask_product_name: str) -> bool:
-    """ Checks if a cloud mask for given dataset already exists """
+def check_existing_mask_directory(dataset: ODCDataset, mask_product_name: str) -> bool:
+    """ Checks if a cloud mask directory for given dataset already exists """
     # TODO: check if mask exists in index
     mask_output_directory = generate_s2_file_output_path(dataset, mask_product_name).parent
     if mask_output_directory.exists():

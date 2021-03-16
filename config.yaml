@@ -45,19 +45,19 @@ masks:
   max_cloud_threshold: 100.0
   min_cloud_threshold: 0.0
 
-  write_rgb: false                 # write l1c rgb for validating results
+  write_rgb: true                  # write l1c rgb for validating results
   write_l1c: false                 # write l1c all bands for validating results
 
   s2cloudless_masks:
+    generate: true                # generate s2cloudless masks
     cloud_threshold: 0.3           # cloud threshold value for s2cloudless
     cloud_projection_distance: 30  # maximum distance to search for cloud shadows in 10m pixels
     dark_pixel_threshold: 0.25     # max band 8 value for pixel to be considered dark
     max_iterations: 0              # max. nr. of cloud masks to create at once. 0 = unlimited
 
   fmask_masks:
+    generate: true                 # generate fmask masks
     max_iterations: 0              # max. nr. of cloud masks to create at once. 0 = unlimited
-    write_rgb: false               # write rgb GeoTIFF of original L1C data
-    write_l1c: false               # same as write_rgb, but write all bands
 
 mosaic:
   # Mosaic creator configuration

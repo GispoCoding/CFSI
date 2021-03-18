@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 """ Simple CLI for CFSI. Requires Docker and Docker-Compose """
 
 import subprocess

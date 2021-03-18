@@ -69,7 +69,7 @@ class CFSI_CLI:
     def __mosaic(self):
         name = generate_container_name("CFSI-mosaic")
         command = self.__generate_compose_run_command(name) + [
-            "odc", "python3", "-m", "cfsi.scripts.masks.create_mosaics"]
+            "odc", "python3", "-m", "cfsi.scripts.process.create_mosaics"]
         self.__run_command(*command)
 
     def __deploy(self):

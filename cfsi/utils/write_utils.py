@@ -50,7 +50,7 @@ def odcdataset_to_single_tif(dataset: ODCDataset,
 
 def gdal_params_for_odcdataset(dataset: ODCDataset):
     """ Gets transformation and projection info for writing ODCDataset with GDAL """
-    ds = dataset_from_odcdataset("s2a_level1c_granule", dataset)
+    ds = dataset_from_odcdataset(dataset)
     return gdal_params_for_xadataset(ds)
 
 
@@ -130,7 +130,7 @@ def write_l1c_dataset(dataset: ODCDataset, rgb: bool = True):
         return
 
     LOGGER.info(f"Writing L1C output for dataset {dataset}")
-    ds = dataset_from_odcdataset("s2a_l1c_granule", dataset, measurements=measurements)
+    ds = dataset_from_odcdataset(dataset, measurements=measurements)
     data = [np.squeeze(ds[band].values / 10000) for band in ds.data_vars]
     odcdataset_to_tif(dataset, data, product_name=product_name)
 

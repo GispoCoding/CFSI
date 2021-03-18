@@ -189,7 +189,7 @@ resource "aws_instance" "cfsi_server" {
     Name = "cfsi-server-tf"
     Project = "UNCFSI"
   }
-  root_block_device { volume_size = 80 }
+  root_block_device { volume_size = 300 }
   user_data = templatefile("${path.module}/setup_cfsi.tpl", {
     AWS_ACCESS_KEY_ID = var.AWS_ACCESS_KEY_ID,
     AWS_SECRET_ACCESS_KEY = var.AWS_SECRET_ACCESS_KEY,

@@ -27,6 +27,7 @@ class MosaicIndexer(ODCIndexer):
     @staticmethod
     def generate_eo3_dataset_doc(mosaic_ds: xa.Dataset, file_path: Path) -> Dict:
         """ Generates and returns a cloudless mosaic eo3 metadata document """
+        mask_name = file_path.name.split("_")[-2]  # TODO: more robust mask name checking
         with rasterio.open(file_path) as src:
             transform = src.meta["transform"]
 
@@ -35,7 +36,7 @@ class MosaicIndexer(ODCIndexer):
             "id": md5(str(uri).encode("utf-8")).hexdigest(),
             "$schema": "https://schemas.opendatacube.org/dataset",
             "product": {
-                "name": "cloudless_mosaic",
+                "name": f"{mask_name}_mosaic",
             },
             "crs": str(mosaic_ds.attrs["crs"]).upper(),
             "grids": {
@@ -44,7 +45,7 @@ class MosaicIndexer(ODCIndexer):
                     "transform": [v for v in transform],
                 },
             },
-            "measurements": {
+            "measurements": {  # TODO: read bands from file
                 "B01": {
                     "path": uri,
                     "band": 1
@@ -65,11 +66,11 @@ class MosaicIndexer(ODCIndexer):
             "uri": str(uri),
             "properties": {
                 "tile_id": file_path.name,
+                "mask_name": mask_name,
                 "eo:instrument": "MSI",
                 "eo:platform": "SENTINEL-2",
-                "odc:file_format": "GeoTIFF",
+                "odc:file_format": "GTIFF",
                 "datetime": str(mosaic_ds.time.time.values),
             }
         }
-        LOGGER.debug(eo3)
         return eo3

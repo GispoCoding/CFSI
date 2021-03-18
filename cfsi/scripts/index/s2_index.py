@@ -6,12 +6,13 @@ from typing import Dict, List
 from xml.etree import ElementTree
 from hashlib import md5
 
-from cfsi import config
+import cfsi
 from cfsi.scripts.index import ODCIndexer
 from cfsi.utils.logger import create_logger
 
 from cfsi.constants import (GUARDIAN, L2A_BUCKET, S2_MEASUREMENTS, S2_PRODUCT_NAMES)
 
+config = cfsi.config()
 LOGGER = create_logger("s2_index")
 
 
@@ -122,7 +123,7 @@ class S2Indexer(ODCIndexer):
             "properties": {
                 "tile_id": tile_metadata.tile_id,
                 "eo:instrument": "MSI",
-                "eo:platform": "SENTINEL-2A",  # TODO: read A or B from metadata
+                "eo:platform": "SENTINEL-2",
                 "odc:file_format": "JPEG2000",
                 "datetime": tile_metadata.sensing_time,
                 "odc:region_code": "".join(Path(uri).parts[3:6]),

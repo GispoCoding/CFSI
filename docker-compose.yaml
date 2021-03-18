@@ -14,7 +14,7 @@ services:
         volumes:
             - ./cfsi:${CFSI_BASE_CONTAINER}
             - ${CFSI_OUTPUT_HOST}:${CFSI_OUTPUT_CONTAINER}
-            - ${CFSI_CONFIG_FILE}:${CFSI_BASE_CONTAINER}/${CFSI_CONFIG_FILE}
+            - ${CFSI_CONFIG_HOST}:${CFSI_CONFIG_CONTAINER}
 
     db:
         environment:

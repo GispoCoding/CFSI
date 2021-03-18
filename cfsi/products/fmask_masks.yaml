@@ -1,14 +1,14 @@
-name: s2a_level1c_fmask
+name: s2_level1c_fmask
 description: Sentinel-2A Level1C - Cloud and shadow masks from Fmask
 metadata_type: eo3
 
 metadata:
   product:
-    name: s2a_level1c_fmask
+    name: s2_level1c_fmask
   properties:
     eo:instrument: MSI
-    eo:platform: SENTINEL-2A
-    odc:file_format: JPEG2000
+    eo:platform: SENTINEL-2
+    odc:file_format: GTiff
 
 measurements:
   - name: 'fmask'

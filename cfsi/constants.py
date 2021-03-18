@@ -22,6 +22,6 @@ S2_MEASUREMENTS = {
     L2A_BUCKET: L2A_MEASUREMENTS,
 }
 S2_PRODUCT_NAMES = {
-    L1C_BUCKET: "s2a_level1c_granule",
-    L2A_BUCKET: "s2a_sen2cor_granule",
+    L1C_BUCKET: "s2_level1c_granule",
+    L2A_BUCKET: "s2_sen2cor_granule",
 }

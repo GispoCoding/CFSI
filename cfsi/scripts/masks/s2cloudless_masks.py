@@ -6,7 +6,7 @@ import numpy as np
 from s2cloudless import S2PixelCloudDetector
 from osgeo import gdal
 
-from cfsi import config
+import cfsi
 from cfsi.scripts.index.s2cloudless_index import S2CloudlessIndexer
 from cfsi.scripts.masks.cloud_mask_generator import CloudMaskGenerator
 from cfsi.utils.load_datasets import dataset_from_odcdataset
@@ -15,6 +15,8 @@ from cfsi.utils.write_utils import odcdataset_to_tif, get_s2_tile_ids
 
 LOGGER = create_logger("s2cloudless", level=DEBUG)
 
+config = cfsi.config()
+
 
 class S2CloudlessGenerator(CloudMaskGenerator):
 
@@ -22,7 +24,7 @@ class S2CloudlessGenerator(CloudMaskGenerator):
         """ Constructor method """
         super().__init__()
         self.max_iterations = config.masks.s2cloudless_masks.max_iterations
-        self.mask_product_name = "s2a_level1c_s2cloudless"
+        self.mask_product_name = "s2_level1c_s2cloudless"
 
     def _create_mask(self, l1c_dataset: ODCDataset) -> bool:
         """ Creates a single mask, returns bool indicating whether to continue iteration """
@@ -45,7 +47,7 @@ class S2CloudlessGenerator(CloudMaskGenerator):
         _, s3_key = get_s2_tile_ids(dataset)
         mean_sun_azimuth = dataset.metadata_doc["properties"]["mean_sun_azimuth"]
 
-        ds = dataset_from_odcdataset(self.l1c_product_name, dataset)
+        ds = dataset_from_odcdataset(dataset)
 
         LOGGER.info("Fetching data to array")
         array = np.moveaxis(ds.to_array().values.astype("float64") / 10000, 0, -1)

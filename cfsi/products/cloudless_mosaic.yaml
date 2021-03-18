@@ -8,7 +8,7 @@ metadata:
   properties:
     eo:instrument: MSI
     eo:platform: SENTINEL-2
-    odc:file_format: GeoTIFF
+    odc:file_format: GTIFF
 
 measurements:
   - name: 'B01'

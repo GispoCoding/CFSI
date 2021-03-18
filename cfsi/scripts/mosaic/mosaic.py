@@ -10,20 +10,21 @@ import numpy as np
 from osgeo import gdal
 import xarray as xa
 
-from cfsi import config
+import cfsi
 from cfsi.utils.load_datasets import dataset_from_odcdataset
 from cfsi.utils.logger import create_logger
 from cfsi.utils.write_utils import array_to_geotiff, gdal_params_for_xadataset
 
-LOGGER = create_logger("s2cloudless_mosaic", level=DEBUG)
+LOGGER = create_logger("mosaic", level=DEBUG)
 
 # TODO: option to write latest image as reference
-# TODO: write output to correct path
+config = cfsi.config()
 
 
 class MosaicCreator:
 
-    def __init__(self, mask_product_name: str,
+    def __init__(self,
+                 mask_product_name: str,
                  date_: str = "today",
                  days: int = 30):
         """ Constructor method """
@@ -37,7 +38,6 @@ class MosaicCreator:
 
     def __get_mask_datasets(self) -> List[ODCDataset]:
         """ Finds mask datasets based on config """
-        # TODO: use config, now returns all datasets for product
         dc = Datacube(app="mosaic_creator")
         time_range = (str(self.__start_date), str(self.__end_date))
         datasets = dc.find_datasets(product=self.__product_name, time=time_range)
@@ -48,12 +48,12 @@ class MosaicCreator:
         return datasets
 
     def create_mosaic_dataset(self) -> xa.Dataset:
-        """ Creates a cloudless mosaic from cloud/shadow mask ODCDatasets """
+        """ Creates a cloudless mosaic """
         LOGGER.info(f"Creating {self.__product_name} mosaic dataset "
                     f"from {len(self.__mask_datasets)} masks "
                     f"from {self.__start_date} to {self.__end_date}")
         ds = self.__setup_mask_datacube()
-        ds = ds.where((ds.cloud_mask == 0) & (ds.shadow_mask == 0), 0)
+        ds = self.__apply_mask(ds)
 
         ds_out: xa.Dataset = ds.copy(deep=True).isel(time=-1)
         recentness: int = config.mosaic.recentness
@@ -80,7 +80,7 @@ class MosaicCreator:
         return ds_out
 
     def __setup_mask_datacube(self) -> xa.Dataset:
-        """ Creates a datacube with L2A S2 bands and masks from given list """
+        """ Creates a datacube with L2A S2 bands and cloud masks """
         mask_dict = {}
         for dataset in self.__mask_datasets:
             LOGGER.debug(f"{type(dataset)}: {dataset}")
@@ -89,9 +89,18 @@ class MosaicCreator:
         mask_dataset_ids = list(mask_dict.keys())
         l2a_dataset_ids = list(mask_dict.values())
 
-        ds_l2a = dataset_from_odcdataset("s2a_sen2cor_granule", ids=l2a_dataset_ids)
-        ds_mask = dataset_from_odcdataset(self.__product_name, ids=mask_dataset_ids)
+        ds_l2a = dataset_from_odcdataset(ids=l2a_dataset_ids)
+        ds_mask = dataset_from_odcdataset(ids=mask_dataset_ids)
         return ds_l2a.merge(ds_mask)
+
+    def __apply_mask(self, ds: xa.Dataset) -> xa.Dataset:
+        """ """
+        if self.__product_name == "s2_level1c_s2cloudless":
+            return ds.where((ds.cloud_mask == 0) & (ds.shadow_mask == 0), 0)
+        elif self.__product_name == "s2_level1c_fmask":
+            return ds.where((ds.fmask == 1) | (ds.fmask == 4) | (ds.fmask == 5), 0)
+        raise ValueError("Invalid mask product name")  # TODO: custom exception
+
 
     @staticmethod
     def __mosaic_from_data_array(da_in: xa.DataArray, recentness: int = 0) -> xa.Dataset:

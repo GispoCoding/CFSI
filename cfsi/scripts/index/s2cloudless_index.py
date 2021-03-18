@@ -27,7 +27,7 @@ class S2CloudlessIndexer(ODCIndexer):
             "id": md5(str(uri).encode("utf-8")).hexdigest(),
             "$schema": "https://schemas.opendatacube.org/dataset",
             "product": {
-                "name": "s2a_level1c_s2cloudless",
+                "name": "s2_level1c_s2cloudless",
             },
             "crs": properties["crs"],
             "grids": {

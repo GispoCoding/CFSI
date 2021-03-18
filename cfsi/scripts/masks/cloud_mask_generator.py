@@ -4,15 +4,16 @@ from typing import List, Optional
 from datacube import Datacube
 from datacube.model import Dataset as ODCDataset
 
-from cfsi import config
+import cfsi
 from cfsi.utils.logger import create_logger
 from cfsi.utils.write_utils import check_existing_mask_directory, write_l1c_dataset
 
+config = cfsi.config()
 LOGGER = create_logger("fmask", level=DEBUG)
 
 
 class CloudMaskGenerator:
-    l1c_product_name = "s2a_level1c_granule"
+    l1c_product_name = "s2_level1c_granule"
 
     def __init__(self):
         self.i = 1

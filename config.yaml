@@ -49,7 +49,7 @@ masks:
   write_l1c: false                 # write l1c all bands for validating results
 
   s2cloudless_masks:
-    generate: true                # generate s2cloudless masks
+    generate: true                 # generate s2cloudless masks
     cloud_threshold: 0.3           # cloud threshold value for s2cloudless
     cloud_projection_distance: 30  # maximum distance to search for cloud shadows in 10m pixels
     dark_pixel_threshold: 0.25     # max band 8 value for pixel to be considered dark
@@ -73,7 +73,8 @@ mosaic:
   # List of cloud/shadow mask products to use for creating mosaics.
   # An output mosaic is generated for each entry.
   products: [
-      "s2a_level1c_s2cloudless",
+      "s2_level1c_s2cloudless",
+      "s2_level1c_fmask",
   ]
 
   # Range defines the maximum range (in days) to look for cloudless pixels.

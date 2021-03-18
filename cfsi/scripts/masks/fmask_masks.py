@@ -6,12 +6,13 @@ from datacube.model import Dataset as ODCDataset
 from fmask.cmdline import sentinel2Stacked
 from sentinelhub import AwsTile, DataCollection, AwsTileRequest
 
-from cfsi import config
+import cfsi
 from cfsi.scripts.index.fmask_index import FmaskIndexer
 from cfsi.scripts.masks.cloud_mask_generator import CloudMaskGenerator
 from cfsi.utils.logger import create_logger
 from cfsi.utils.write_utils import get_s2_tile_ids, generate_s2_file_output_path
 
+config = cfsi.config()
 LOGGER = create_logger("fmask", level=DEBUG)
 
 
@@ -20,7 +21,7 @@ class FmaskGenerator(CloudMaskGenerator):
     def __init__(self):
         super().__init__()
         self.max_iterations = config.masks.fmask_masks.max_iterations
-        self.mask_product_name = "s2a_level1c_fmask"
+        self.mask_product_name = "s2_level1c_fmask"
 
     def _create_mask(self, l1c_dataset: ODCDataset) -> bool:
         if not config.masks.fmask_masks.generate:

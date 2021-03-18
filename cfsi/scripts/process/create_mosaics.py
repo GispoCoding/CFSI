@@ -1,6 +1,8 @@
-from cfsi import config
+import cfsi
 from cfsi.scripts.index.mosaic_index import MosaicIndexer
 from cfsi.scripts.mosaic import MosaicCreator
+
+config = cfsi.config()
 
 
 def create_mosaics():

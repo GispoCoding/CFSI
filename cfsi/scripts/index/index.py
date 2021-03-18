@@ -65,8 +65,8 @@ class ODCIndexer:
             "tile_id": tile_metadata.tile_id,
             "crs": tile_metadata.crs_code,
             "eo:instrument": "MSI",
-            "eo:platform": "SENTINEL-2A",  # TODO: read A or B from metadata
-            "odc:file_format": "JPEG2000",
+            "eo:platform": "SENTINEL-2",
+            "odc:file_format": "GTiff",
             "datetime": tile_metadata.sensing_time,
             "odc:region_code": "".join(Path(l1c_uri).parts[3:6]),
             "mean_sun_zenith": tile_metadata.sun_zenith,
@@ -181,7 +181,7 @@ class ODCIndexer:
         """ Gets the S2 L2A dataset ODCDataset that corresponds to l1c_dataset """
         l1c_uri = l1c_dataset.uris[0]
         l2a_uri = swap_s2_bucket_names(l1c_uri)
-        l2a_dataset_id = self.odcdataset_id_from_uri(l2a_uri, "s2a_sen2cor_granule")
+        l2a_dataset_id = self.odcdataset_id_from_uri(l2a_uri, "s2_sen2cor_granule")
         l2a_odcdataset: ODCDataset = self.dc.index.datasets.get(l2a_dataset_id)
         return l2a_odcdataset
 

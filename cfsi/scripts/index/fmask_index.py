@@ -23,7 +23,7 @@ class FmaskIndexer(ODCIndexer):
             "id": md5(str(uri).encode("utf-8")).hexdigest(),
             "$schema": "https://schemas.opendatacube.org/dataset",
             "product": {
-                "name": "s2a_level1c_fmask",
+                "name": "s2_level1c_fmask",
             },
             "crs": properties["crs"],
             "grids": {

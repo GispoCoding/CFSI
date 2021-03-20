@@ -101,7 +101,6 @@ class MosaicCreator:
             return ds.where((ds.fmask == 1) | (ds.fmask == 4) | (ds.fmask == 5), 0)
         raise ValueError("Invalid mask product name")  # TODO: custom exception
 
-
     @staticmethod
     def __mosaic_from_data_array(da_in: xa.DataArray, recentness: int = 0) -> xa.Dataset:
         """ Creates a most-recent-to-oldest mosaic of the input dataset.
@@ -148,7 +147,6 @@ class MosaicCreator:
 
     def __generate_mosaic_output_path(self) -> Path:
         """ Generates an output Path for a new mosaic """
-        # TODO: merge with write_utils.generate_s2_file_output_path?
         base_output_path = Path(os.environ["CFSI_OUTPUT_CONTAINER"])
         mosaic_dir = Path(base_output_path / "mosaics")
         i = 0

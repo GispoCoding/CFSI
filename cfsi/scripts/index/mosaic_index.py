@@ -38,7 +38,7 @@ class MosaicIndexer(ODCIndexer):
             "product": {
                 "name": f"{mask_name}_mosaic",
             },
-            "crs": str(mosaic_ds.attrs["crs"]).upper(),
+            "crs": f"EPSG:{mosaic_ds.geobox.crs.to_epsg()}",
             "grids": {
                 "default": {  # 10m
                     "shape": (mosaic_ds.dims["y"], mosaic_ds.dims["x"]),

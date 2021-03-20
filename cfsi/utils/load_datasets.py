@@ -28,16 +28,12 @@ def dataset_from_odcdataset(
 
     product_name = datasets[0].metadata_doc["product"]["name"]
     crs = datasets[0].crs
-    try:
-        xform = datasets[0].metadata_doc["grids"]["default"]["transform"]
-        res = (xform[0], xform[4])
-    except KeyError:
-        res = (10, -10)
+    res = (10, -10)  # TODO: handle other resolutions
 
     ds = dc.load(product=product_name,
-                   dask_chunks={},
-                   measurements=measurements,
-                   output_crs=str(crs),
-                   resolution=res,
-                   datasets=datasets)
+                 dask_chunks={},
+                 measurements=measurements,
+                 output_crs=str(crs),
+                 resolution=res,
+                 datasets=datasets)
     return ds

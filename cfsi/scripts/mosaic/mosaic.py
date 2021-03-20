@@ -119,8 +119,9 @@ class MosaicCreator:
 
         for index in range(len(da_in.time) - 2, -1, -1):
             LOGGER.debug(f"Index {index}/{len(da_in.time) - 2}")
-            LOGGER.debug("Nr. of nodata pixels remaining: "
-                         f"{np.count_nonzero(out_arr == 0)/1000}k/{(cols * rows)/1000}k")
+            LOGGER.debug("Nodata (0) pixels remaining: "
+                         f"{round(np.count_nonzero(out_arr == 0)/1000000)}Mp/"
+                         f"{round((cols * rows)/1000000)}Mp")
             da_slice = da_in.isel(time=index)  # TODO: check if .drop("time") needed
             if recentness:
                 da_slice_time = da_in.time[index].values.astype('datetime64[D]').astype('uint16')

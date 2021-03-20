@@ -111,16 +111,21 @@ class MosaicCreator:
         out_arr = da_out.values
         recentness_arr = None
         cols, rows = da_out.sizes['x'], da_out.sizes['y']
+        LOGGER.debug(f"Out array shape (x, y): {cols, rows}")
         if recentness:
             latest_time = da_in.time[-1].values.astype('datetime64[D]').astype('uint16')
             recentness_arr = np.empty((rows, cols), dtype=np.uint16)
             recentness_arr[:] = latest_time
 
         for index in range(len(da_in.time) - 2, -1, -1):
+            LOGGER.debug(f"Index {index}/{len(da_in.time) - 2}")
+            LOGGER.debug("Nr. of nodata pixels remaining: "
+                         f"{np.count_nonzero(out_arr == 0)/1000}k/{(cols * rows)/1000}k")
             da_slice = da_in.isel(time=index)  # TODO: check if .drop("time") needed
             if recentness:
                 da_slice_time = da_in.time[index].values.astype('datetime64[D]').astype('uint16')
                 recentness_arr[out_arr == 0] = da_slice_time
+            LOGGER.debug("Setting new out array values")
             out_arr[out_arr == 0] = da_slice.values[out_arr == 0]
 
         da_out.values = out_arr

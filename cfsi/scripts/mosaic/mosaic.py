@@ -61,7 +61,7 @@ class MosaicCreator:
         i = 1
 
         for band in output_bands:
-            LOGGER.info(f"Creating mosaic for band {band}, {i}/{len(output_bands)}")
+            LOGGER.info(f"Creating {self.__product_name} mosaic for band {band}, {i}/{len(output_bands)}")
             mosaic_da = self.__mosaic_from_data_array(ds[band], recentness=recentness)
             ds_out[band].values = mosaic_da[band].values
             if recentness:
@@ -83,7 +83,6 @@ class MosaicCreator:
         """ Creates a datacube with L2A S2 bands and cloud masks """
         mask_dict = {}
         for dataset in self.__mask_datasets:
-            LOGGER.debug(f"{type(dataset)}: {dataset}")
             mask_dict[dataset.id] = dataset.metadata_doc["properties"]["l2a_dataset_id"]
 
         mask_dataset_ids = list(mask_dict.keys())

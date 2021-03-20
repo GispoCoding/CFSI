@@ -69,7 +69,7 @@ class MosaicIndexer(ODCIndexer):
                 "mask_name": mask_name,
                 "eo:instrument": "MSI",
                 "eo:platform": "SENTINEL-2",
-                "odc:file_format": "GTIFF",
+                "odc:file_format": "GTiff",
                 "datetime": str(mosaic_ds.time.time.values),
             }
         }

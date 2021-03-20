@@ -1,14 +1,14 @@
-name: cloudless_mosaic
-description: Sentinel-2A Level2A - Cloudless mosaic
+name: s2cloudless_mosaic
+description: Sentinel-2 Level2A - Cloudless s2cloudless mosaic
 metadata_type: eo3
 
 metadata:
   product:
-    name: cloudless_mosaic
+    name: s2cloudless_mosaic
   properties:
     eo:instrument: MSI
     eo:platform: SENTINEL-2
-    odc:file_format: GTIFF
+    odc:file_format: GTiff
 
 measurements:
   - name: 'B01'

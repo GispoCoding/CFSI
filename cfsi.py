@@ -44,7 +44,7 @@ class CFSI_CLI:
         name = generate_container_name("CFSI-init")
         self.__wait_for_db(name)
         command = self.__generate_compose_run_command(name) + [
-            "odc", "cfsi/scripts/setup/setup_odc.sh"]
+            "odc", "cfsi/scripts/setup/odc_init.sh"]
         self.__run_command(*command)
 
     def __stop(self):

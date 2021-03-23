@@ -12,6 +12,7 @@ CLI_ACTIONS = (
     Action("init", "Initialize ODC database schema", [False]),
     Action("stop", "Stops ODC database container", [False]),
     Action("clean", "Stops ODC database container and deletes data", [False]),
+    Action("console", "Opens bash shell inside CFSI container", [False]),
     Action("index", "Index S2 images to ODC from AWS S3", [False]),
     Action("mask", "Generate cloud and shadow masks", [False]),
     Action("mosaic", "Create cloudless mosaics", [False]),

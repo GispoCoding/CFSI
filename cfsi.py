@@ -24,7 +24,7 @@ class CFSI_CLI:
         return {"build": self.__build, "start": self.__start, "init": self.__initialize,
                 "stop": self.__stop, "clean": self.__clean, "index": self.__index,
                 "mask": self.__mask, "mosaic": self.__mosaic, "deploy": self.__deploy,
-                "destroy": self.__destroy, "log": self.__log}
+                "destroy": self.__destroy, "log": self.__log, "console": self.__console}
 
     def __run(self):
         try:
@@ -52,6 +52,12 @@ class CFSI_CLI:
 
     def __clean(self):
         self.__run_command("docker-compose", "down", "--volumes")
+
+    def __console(self):
+        name = generate_container_name("CFSI-console")
+        self.__wait_for_db(name)
+        command = self.__generate_compose_run_command(name) + ["odc", "bash"]
+        self.__run_command(*command)
 
     def __index(self):
         name = generate_container_name("CFSI-index")

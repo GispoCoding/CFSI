@@ -1,8 +1,11 @@
+import os
 from logging import DEBUG
+from pathlib import Path
 from typing import List, Optional
 
 from datacube import Datacube
 from datacube.model import Dataset as ODCDataset
+from sentinelhub import AwsTile, AwsTileRequest, DataCollection
 
 import cfsi
 from cfsi.utils.logger import create_logger
@@ -41,6 +44,25 @@ class CloudMaskGenerator:
         dc = Datacube(app="cloud_mask_generator")
         l1c_datasets = dc.find_datasets(product=self.l1c_product_name)
         return l1c_datasets
+
+    @staticmethod
+    def fetch_s2_to_safe(tile_id: str) -> Path:
+        """ Fetches S2 granule by tile ID from AWS S3 to .SAFE format.
+        Does not overwrite or re-download existing data.
+        :param tile_id: S2 granule tile ID
+        :returns Path of fetched data """
+        tile_name, time, aws_index = AwsTile.tile_id_to_tile(tile_id)
+        base_output_path = Path(os.environ["CFSI_OUTPUT_CONTAINER"]).joinpath("cache/safe")
+        request = AwsTileRequest(tile=tile_name,
+                                 time=time,
+                                 aws_index=aws_index,
+                                 data_folder=base_output_path,
+                                 data_collection=DataCollection.SENTINEL2_L1C,
+                                 safe_format=True)
+        LOGGER.info(f"Fetching data to .SAFE format for granule {tile_id}")
+        request.save_data()
+        tile_output_directory = Path(request.get_filename_list()[0]).parts[0]
+        return base_output_path.joinpath(tile_output_directory)
 
     @staticmethod
     def _create_mask(l1c_dataset: ODCDataset) -> bool:

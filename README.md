@@ -64,6 +64,7 @@ Follow the ODC [installation guide](https://datacube-core.readthedocs.io/en/late
 The project is still under active development and things may and will change without notice. The to-do list before a possible future stable release includes:
 
 - [x] CLI for common operations such as generating mosaics and indexing new S2 imagery to ODC
-- [ ] Support for other cloud masking methods besides s2cloudless
+- [x] Support for other cloud masking methods besides s2cloudless
+- [ ] Migrate write operations from GDAL to rasterio
 - [ ] User testing with different areas and configurations
 - [ ] Automated test framework and unit tests

@@ -4,7 +4,6 @@ from pathlib import Path
 
 from datacube.model import Dataset as ODCDataset
 from fmask.cmdline import sentinel2Stacked
-from sentinelhub import AwsTile, DataCollection, AwsTileRequest
 
 import cfsi
 from cfsi.scripts.index.fmask_index import FmaskIndexer
@@ -53,22 +52,6 @@ class FmaskGenerator(CloudMaskGenerator):
         self.write_l1c_reference(dataset)
 
         return mask_output_path
-
-    @staticmethod
-    def fetch_s2_to_safe(tile_id: str) -> Path:
-        """ Fetches S2 granule by tile ID from AWS S3 to .SAFE format, returns Path of fetched data """
-        tile_name, time, aws_index = AwsTile.tile_id_to_tile(tile_id)
-        base_output_path = Path(os.environ["CFSI_OUTPUT_CONTAINER"]).joinpath("cache/safe")
-        request = AwsTileRequest(tile=tile_name,
-                                 time=time,
-                                 aws_index=aws_index,
-                                 data_folder=base_output_path,
-                                 data_collection=DataCollection.SENTINEL2_L1C,
-                                 safe_format=True)
-        LOGGER.info("Fetching data to .SAFE format")
-        request.save_data()
-        tile_output_directory = Path(request.get_filename_list()[0]).parts[0]
-        return base_output_path.joinpath(tile_output_directory)
 
 
 if __name__ == "__main__":

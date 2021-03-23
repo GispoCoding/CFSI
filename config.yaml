@@ -49,6 +49,7 @@ masks:
   write_l1c: false                 # write l1c all bands for validating results
 
   s2cloudless_masks:
+    cache: true                    # use L1C tile cache for s2cloudless mask generation
     generate: true                 # generate s2cloudless masks
     cloud_threshold: 0.3           # cloud threshold value for s2cloudless
     cloud_projection_distance: 30  # maximum distance to search for cloud shadows in 10m pixels

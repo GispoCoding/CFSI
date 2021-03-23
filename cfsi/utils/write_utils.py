@@ -13,39 +13,71 @@ gdal.UseExceptions()
 LOGGER = create_logger("write_utils")
 
 
-def odcdataset_to_tif(dataset: ODCDataset,
-                      data: Union[List[np.ndarray], Dict[str, np.ndarray]],
-                      product_name: str = "",
-                      data_type: int = gdal.GDT_Float32) -> List[Path]:
-    """ Write a ODCDataset to .tif file(s).
-     :param dataset: ODC Dataset being written
-     :param data: data to write in numpy ndarray,
-            or output_name: ndarray dict if writing multiple single band files
-     :param product_name: write .tif(s) to own subdirectory with product name suffix, optional
-     :param data_type: GDAL data type to use when writing file, optional
-     :return: list of Paths of written files """
+def write_l1c_dataset(dataset: ODCDataset, rgb: bool = True):
+    """ Writes a ODC S2 L1C dataset to a rgb .tif file """
+    measurements = None
+    product_name = "l1c"
+    if rgb:
+        measurements = ['B02', 'B03', 'B04']
+        product_name = "rgb"
+    output_dir = generate_s2_file_output_path(dataset, product_name).parent
+    if output_dir.exists():
+        LOGGER.info(f"Directory {product_name} for L1C output already exists, skipping")
+        return
 
-    if isinstance(data, List):
-        output_file = odcdataset_to_single_tif(dataset, data, product_name, data_type)
-        return [output_file]
-    else:
-        output_files = odcdataset_to_multiple_tif(dataset, data, product_name, data_type)
-        return output_files
+    LOGGER.info(f"Writing L1C output for dataset {dataset}")
+    ds = dataset_from_odcdataset(dataset, measurements=measurements)
+    data = [np.squeeze(ds[band].values / 10000) for band in ds.data_vars]
+    odcdataset_to_single_tif(dataset, data, product_name=product_name)
 
 
 def odcdataset_to_single_tif(dataset: ODCDataset,
                              data: List[np.ndarray],
                              product_name: str = "",
-                             data_type: int = gdal.GDT_Float32) -> Path:
+                             data_type: int = gdal.GDT_Float32,
+                             transform=None) -> Path:
     """ Writes a list of ndarray to single .tif file.
      :param dataset: ODC dataset being written
      :param data: list of ndarray
      :param product_name: name of product being written, optional
-     :param data_type: GDAL data type, optional """
-    geo_transform, projection = gdal_params_for_odcdataset(dataset)
-    output_dir = generate_s2_file_output_path(dataset, product_name)
-    array_to_geotiff(output_dir, data, geo_transform, projection, data_type=data_type)
-    return output_dir
+     :param data_type: GDAL data type, optional
+     :param transform: tuple of (geo_transform, WKT projection), optional """
+    if transform:
+        geo_transform, projection = transform
+    else:
+        geo_transform, projection = gdal_params_for_odcdataset(dataset)
+    output_path = generate_s2_file_output_path(dataset, product_name)
+    array_to_geotiff(output_path, data, geo_transform, projection, data_type=data_type)
+    return output_path
+
+
+def odcdataset_to_multiple_tif(dataset: ODCDataset,
+                               data: Dict[str, np.ndarray],
+                               product_name: str = "",
+                               data_type: int = gdal.GDT_Float32,
+                               transform=None) -> List[Path]:
+    """ Writes output in dictionary to multiple single band .tif files.
+     :param dataset: ODCDataset being written
+     :param data: dict of band_name: np.ndarray, each band is written to a separate file
+     :param product_name: name of product being written, optional
+     :param data_type: GDAL datatype, optional
+     :param transform: Provide custom geo_transform and projection for array_to_geotiff
+     :return: list of written files """
+    if transform:
+        geo_transform, projection = transform
+    else:
+        geo_transform, projection = gdal_params_for_odcdataset(dataset)
+
+    output_paths = []
+    for band_name in data:
+        output_path = generate_s2_file_output_path(dataset, product_name, band_name)
+        array_to_geotiff(output_path,
+                         data[band_name],
+                         geo_transform,
+                         projection,
+                         data_type=data_type)
+        output_paths.append(output_path)
+    return output_paths
 
 
 def gdal_params_for_odcdataset(dataset: ODCDataset):
@@ -94,47 +126,6 @@ def get_s2_tile_ids(dataset: ODCDataset) -> (str, str):
     return tile_id, s3_key
 
 
-def odcdataset_to_multiple_tif(dataset: ODCDataset,
-                               data: Dict[str, np.ndarray],
-                               product_name: str = "",
-                               data_type: int = gdal.GDT_Float32) -> List[Path]:
-    """ Writes output in dictionary to multiple single band .tif files.
-     :param dataset: ODCDataset being written
-     :param data: dict of band_name: np.ndarray, each band is written to a separate file
-     :param product_name: name of product being written, optional
-     :param data_type: GDAL datatype, optional
-     :return: list of written files """
-    output_paths = []
-    geo_transform, projection = gdal_params_for_odcdataset(dataset)
-    for band_name in data:
-        output_path = generate_s2_file_output_path(dataset, product_name, band_name)
-        array_to_geotiff(output_path,
-                         data[band_name],
-                         geo_transform,
-                         projection,
-                         data_type=data_type)
-        output_paths.append(output_path)
-    return output_paths
-
-
-def write_l1c_dataset(dataset: ODCDataset, rgb: bool = True):
-    """ Writes a ODC S2 L1C dataset to a rgb .tif file """
-    measurements = None
-    product_name = "l1c"
-    if rgb:
-        measurements = ['B02', 'B03', 'B04']
-        product_name = "rgb"
-    output_dir = generate_s2_file_output_path(dataset, product_name).parent
-    if output_dir.exists():
-        LOGGER.info(f"Directory {product_name} for L1C output already exists, skipping")
-        return
-
-    LOGGER.info(f"Writing L1C output for dataset {dataset}")
-    ds = dataset_from_odcdataset(dataset, measurements=measurements)
-    data = [np.squeeze(ds[band].values / 10000) for band in ds.data_vars]
-    odcdataset_to_tif(dataset, data, product_name=product_name)
-
-
 def array_to_geotiff(file_path: Path,
                      data: Union[List[np.ndarray], np.ndarray],
                      geo_transform: Tuple,
@@ -142,15 +133,13 @@ def array_to_geotiff(file_path: Path,
                      nodata_val=0,
                      data_type=gdal.GDT_Float32):
     """ Create a single or multi band GeoTIFF file with data from an array.
-    file_name : output geotiff file path including extension
-    data : list of numpy arrays
-    geo_transform : Geotransform for output raster; e.g.
+    :param file_path: output geotiff file path including extension
+    :param data: (list of) numpy array(s), all written to single file
+    :param geo_transform: Geotransform for output raster, e.g.
     "(up_left_x, x_size, x_rotation, up_left_y, y_rotation, y_size)"
-    projection : WKT projection for output raster
-    nodata_val : Value to convert to nodata in the output raster; default 0
-    data_type : gdal data_type object, optional
-        Optionally set the data_type of the output raster; can be
-        useful when exporting an array of float or integer values. """
+    :param projection: WKT projection for output raster
+    :param nodata_val: Value to convert to nodata in the output raster, optional
+    :param data_type: gdal data_type object, optional """
     driver = gdal.GetDriverByName('GTiff')
     if not file_path.parent.exists():
         LOGGER.info(f"Creating output directory {file_path.parent}")

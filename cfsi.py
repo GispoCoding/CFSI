@@ -4,7 +4,7 @@
 import subprocess
 from typing import Callable, Dict, List
 
-from cfsi.utils.cli import CFSICLIParser, generate_container_name
+from cfsi.cli import CFSICLIParser, generate_container_name
 
 
 # noinspection PyPep8Naming

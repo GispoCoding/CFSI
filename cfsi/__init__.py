@@ -1,4 +1,4 @@
-from cfsi.utils.config import load_config
+from cfsi.config import load_config
 
 
 def config():

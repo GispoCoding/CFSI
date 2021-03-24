@@ -1,15 +1,16 @@
-import os
 from pathlib import Path
 from typing import List, Tuple, Union, Dict
 import numpy as np
-from osgeo import gdal
 import xarray as xa
+import rasterio as rio
+from rasterio.crs import CRS
+from rasterio.transform import Affine
 
+from cfsi.utils import generate_s2_tif_path
 from cfsi.utils.logger import create_logger
-from cfsi.utils.load_datasets import dataset_from_odcdataset
+from cfsi.utils.load_datasets import xadataset_from_odcdataset
 from datacube.model import Dataset as ODCDataset
 
-gdal.UseExceptions()
 LOGGER = create_logger("write_utils")
 
 
@@ -20,13 +21,13 @@ def write_l1c_dataset(dataset: ODCDataset, rgb: bool = True):
     if rgb:
         measurements = ['B02', 'B03', 'B04']
         product_name = "rgb"
-    output_dir = generate_s2_file_output_path(dataset, product_name).parent
+    output_dir = generate_s2_tif_path(dataset, product_name).parent
     if output_dir.exists():
         LOGGER.info(f"Directory {product_name} for L1C output already exists, skipping")
         return
 
     LOGGER.info(f"Writing L1C output for dataset {dataset}")
-    ds = dataset_from_odcdataset(dataset, measurements=measurements)
+    ds = xadataset_from_odcdataset(dataset, measurements=measurements)
     data = [np.squeeze(ds[band].values / 10000) for band in ds.data_vars]
     odcdataset_to_single_tif(dataset, data, product_name=product_name)
 
@@ -34,19 +35,21 @@ def write_l1c_dataset(dataset: ODCDataset, rgb: bool = True):
 def odcdataset_to_single_tif(dataset: ODCDataset,
                              data: List[np.ndarray],
                              product_name: str = "",
-                             data_type: int = gdal.GDT_Float32,
-                             transform=None) -> Path:
+                             data_type: int = rio.float32,
+                             custom_transform: Tuple[Affine, CRS] = None) -> Path:
     """ Writes a list of ndarray to single .tif file.
      :param dataset: ODC dataset being written
      :param data: list of ndarray
      :param product_name: name of product being written, optional
-     :param data_type: GDAL data type, optional
-     :param transform: tuple of (geo_transform, WKT projection), optional """
-    if transform:
-        geo_transform, projection = transform
+     :param data_type: rasterio data type, optional
+     :param custom_transform: provide custom transform and CRS, optional
+     :return: Path of written file """
+    if custom_transform:
+        geo_transform, projection = custom_transform
     else:
-        geo_transform, projection = gdal_params_for_odcdataset(dataset)
-    output_path = generate_s2_file_output_path(dataset, product_name)
+        geo_transform, projection = rio_params_for_odcdataset(dataset)
+
+    output_path = generate_s2_tif_path(dataset, product_name)
     array_to_geotiff(output_path, data, geo_transform, projection, data_type=data_type)
     return output_path
 
@@ -54,25 +57,25 @@ def odcdataset_to_single_tif(dataset: ODCDataset,
 def odcdataset_to_multiple_tif(dataset: ODCDataset,
                                data: Dict[str, np.ndarray],
                                product_name: str = "",
-                               data_type: int = gdal.GDT_Float32,
-                               transform=None) -> List[Path]:
+                               data_type: int = rio.float32,
+                               custom_transform: Tuple[Affine, CRS] = None) -> List[Path]:
     """ Writes output in dictionary to multiple single band .tif files.
      :param dataset: ODCDataset being written
      :param data: dict of band_name: np.ndarray, each band is written to a separate file
      :param product_name: name of product being written, optional
-     :param data_type: GDAL datatype, optional
-     :param transform: Provide custom geo_transform and projection for array_to_geotiff
+     :param data_type: rasterio datatype, optional
+     :param custom_transform: provide custom transform and CRS, optional
      :return: list of written files """
-    if transform:
-        geo_transform, projection = transform
+    if custom_transform:
+        geo_transform, projection = custom_transform
     else:
-        geo_transform, projection = gdal_params_for_odcdataset(dataset)
+        geo_transform, projection = rio_params_for_odcdataset(dataset)
 
     output_paths = []
-    for band_name in data:
-        output_path = generate_s2_file_output_path(dataset, product_name, band_name)
+    for band_name, band_data in data.items():
+        output_path = generate_s2_tif_path(dataset, product_name, band_name)
         array_to_geotiff(output_path,
-                         data[band_name],
+                         band_data,
                          geo_transform,
                          projection,
                          data_type=data_type)
@@ -80,80 +83,43 @@ def odcdataset_to_multiple_tif(dataset: ODCDataset,
     return output_paths
 
 
-def gdal_params_for_odcdataset(dataset: ODCDataset):
-    """ Gets transformation and projection info for writing ODCDataset with GDAL """
-    ds = dataset_from_odcdataset(dataset)
-    return gdal_params_for_xadataset(ds)
+def rio_params_for_odcdataset(dataset: ODCDataset):
+    """ Gets transformation and projection info for writing ODCDataset with rasterio """
+    ds = xadataset_from_odcdataset(dataset)
+    return rio_params_for_xadataset(ds)
 
 
-def gdal_params_for_xadataset(dataset: xa.Dataset):
-    """ Gets transformation and projection info for writing Datacube with GDAL """
-    geo_transform = dataset.geobox.transform.to_gdal()
-    projection = dataset.geobox.crs.wkt
+def rio_params_for_xadataset(dataset: xa.Dataset):
+    """ Gets transformation and projection info for writing xa.Dataset with rasterio """
+    geo_transform = dataset.geobox.transform
+    projection = dataset.geobox.crs
     return geo_transform, projection
-
-
-def check_existing_mask_directory(dataset: ODCDataset, mask_product_name: str) -> bool:
-    """ Checks if a cloud mask directory for given dataset already exists """
-    # TODO: check if mask exists in index
-    mask_output_directory = generate_s2_file_output_path(dataset, mask_product_name).parent
-    if mask_output_directory.exists():
-        return True
-    return False
-
-
-def generate_s2_file_output_path(dataset: ODCDataset,
-                                 product_name: str = "",
-                                 band_name: str = "") -> Path:
-    """ Generates a output path for writing a ODCDataset to a .tif file.
-     :param dataset: ODCDataset being written
-     :param product_name: product name being written. each product goes to its own sub-directory, optional
-     :param band_name: name of band being written. band name is appended to filename, optional """
-    base_output_path = Path(os.environ["CFSI_OUTPUT_CONTAINER"])  # TODO: write to S3
-    tile_id, s3_key = get_s2_tile_ids(dataset)
-    if band_name:
-        tile_id += f"_{band_name}"
-    tile_id += ".tif"
-    output_dir = Path(base_output_path / s3_key).joinpath(product_name, tile_id)
-    return output_dir
-
-
-def get_s2_tile_ids(dataset: ODCDataset) -> (str, str):
-    """ Returns tile_id and s3_key from dataset metadata doc """
-    tile_props = dataset.metadata_doc["properties"]
-    tile_id = tile_props["tile_id"]
-    s3_key = tile_props["s3_key"]
-    return tile_id, s3_key
 
 
 def array_to_geotiff(file_path: Path,
                      data: Union[List[np.ndarray], np.ndarray],
                      geo_transform: Tuple,
-                     projection: str,
-                     nodata_val=0,
-                     data_type=gdal.GDT_Float32):
-    """ Create a single or multi band GeoTIFF file with data from an array.
+                     projection,
+                     data_type=rio.float32):
+    """ Write a single or multi band GeoTIFF
     :param file_path: output geotiff file path including extension
     :param data: (list of) numpy array(s), all written to single file
-    :param geo_transform: Geotransform for output raster, e.g.
-    "(up_left_x, x_size, x_rotation, up_left_y, y_rotation, y_size)"
-    :param projection: WKT projection for output raster
-    :param nodata_val: Value to convert to nodata in the output raster, optional
-    :param data_type: gdal data_type object, optional """
-    driver = gdal.GetDriverByName('GTiff')
+    :param geo_transform: Geotransform for output raster in rasterio format
+    :param projection: projection for output raster in rasterio format
+    :param data_type: rasterio data type, optional """
     if not file_path.parent.exists():
         LOGGER.info(f"Creating output directory {file_path.parent}")
         file_path.parent.mkdir(parents=True, exist_ok=True)
     if isinstance(data, np.ndarray):
         data = [data]
-    rows, cols = data[0].shape  # Create raster of given size and projection
-    dataset = driver.Create(str(file_path), cols, rows, len(data), data_type)
-    dataset.SetGeoTransform(geo_transform)
-    dataset.SetProjection(projection)
-    for idx, d in enumerate(data):
-        band = dataset.GetRasterBand(idx + 1)
-        band.WriteArray(d)
-        band.SetNoDataValue(nodata_val)
 
-    # noinspection PyUnusedLocal
-    dataset = None  # Close %%file
+    rows, cols = data[0].shape  # Create raster of given size and projection
+    with rio.open(file_path, "w",
+                  driver="GTiff", compress="lzw",
+                  height=rows, width=cols,
+                  transform=geo_transform, crs=projection,
+                  count=(len(data)), nodata=0,
+                  dtype=data_type) as dest:
+
+        for idx, d in enumerate(data):
+            dest.write(d.astype(data_type), idx + 1)

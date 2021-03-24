@@ -6,7 +6,7 @@ from datacube.model import Dataset as ODCDataset
 import xarray as xa
 
 
-def dataset_from_odcdataset(
+def xadataset_from_odcdataset(
         datasets: Union[List[ODCDataset], ODCDataset] = None,
         ids: Union[List[UUID], UUID] = None,
         measurements: List[str] = None) -> xa.Dataset:

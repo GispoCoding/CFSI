@@ -1,4 +1,3 @@
-import os
 from logging import DEBUG
 from pathlib import Path
 
@@ -9,7 +8,7 @@ import cfsi
 from cfsi.scripts.index.fmask_index import FmaskIndexer
 from cfsi.scripts.masks.cloud_mask_generator import CloudMaskGenerator
 from cfsi.utils.logger import create_logger
-from cfsi.utils.write_utils import get_s2_tile_ids, generate_s2_file_output_path
+from cfsi.utils import get_s2_tile_ids, generate_s2_tif_path
 
 config = cfsi.config()
 LOGGER = create_logger("fmask", level=DEBUG)
@@ -35,12 +34,12 @@ class FmaskGenerator(CloudMaskGenerator):
 
         return self._continue_iteration()
 
-    def __create_fmask_file(self, dataset: ODCDataset) -> Path:
+    def __create_fmask_file(self, l1c_dataset: ODCDataset) -> Path:
         """ Generate Fmask masks for a single datacube dataset """
-        tile_id, s3_key = get_s2_tile_ids(dataset)
+        tile_id, s3_key = get_s2_tile_ids(l1c_dataset)
         safe_tile_path = self.fetch_s2_to_safe(tile_id)
 
-        mask_output_path = generate_s2_file_output_path(dataset, self.mask_product_name)
+        mask_output_path = generate_s2_tif_path(l1c_dataset, self.mask_product_name)
         fmask_args = ["--granuledir", str(safe_tile_path), "-o", str(mask_output_path), "-v"]
 
         if not mask_output_path.parent.exists():
@@ -49,7 +48,7 @@ class FmaskGenerator(CloudMaskGenerator):
         LOGGER.info(f"Generating fmask masks for {s3_key}")
         sentinel2Stacked.mainRoutine(fmask_args)
 
-        self.write_l1c_reference(dataset)
+        self.write_l1c_reference(l1c_dataset)
 
         return mask_output_path
 

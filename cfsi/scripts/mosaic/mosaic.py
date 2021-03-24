@@ -7,13 +7,13 @@ from typing import List
 from datacube import Datacube
 from datacube.model import Dataset as ODCDataset
 import numpy as np
-from osgeo import gdal
+import rasterio as rio
 import xarray as xa
 
 import cfsi
-from cfsi.utils.load_datasets import dataset_from_odcdataset
+from cfsi.utils.load_datasets import xadataset_from_odcdataset
 from cfsi.utils.logger import create_logger
-from cfsi.utils.write_utils import array_to_geotiff, gdal_params_for_xadataset
+from cfsi.utils.write_utils import array_to_geotiff, rio_params_for_xadataset
 
 LOGGER = create_logger("mosaic", level=DEBUG)
 
@@ -88,8 +88,8 @@ class MosaicCreator:
         mask_dataset_ids = list(mask_dict.keys())
         l2a_dataset_ids = list(mask_dict.values())
 
-        ds_l2a = dataset_from_odcdataset(ids=l2a_dataset_ids)
-        ds_mask = dataset_from_odcdataset(ids=mask_dataset_ids)
+        ds_l2a = xadataset_from_odcdataset(ids=l2a_dataset_ids)
+        ds_mask = xadataset_from_odcdataset(ids=mask_dataset_ids)
         return ds_l2a.merge(ds_mask)
 
     def __apply_mask(self, ds: xa.Dataset) -> xa.Dataset:
@@ -149,10 +149,10 @@ class MosaicCreator:
         LOGGER.info("Constructing mosaic array")
         data: List[np.ndarray] = [np.squeeze(mosaic_ds[band].values)
                                   for band in mosaic_ds.data_vars]
-        geo_transform, projection = gdal_params_for_xadataset(mosaic_ds)
+        geo_transform, projection = rio_params_for_xadataset(mosaic_ds)
 
         LOGGER.info(f"Writing mosaic to {filepath}")
-        array_to_geotiff(filepath, data, geo_transform, projection, data_type=gdal.GDT_UInt16)
+        array_to_geotiff(filepath, data, geo_transform, projection, data_type=rio.uint16)
         LOGGER.info(f"Generated mosaic {filepath}")
         return filepath
 

@@ -1,20 +1,18 @@
-import glob
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict
 from logging import DEBUG
 from datacube.model import Dataset as ODCDataset
 import numpy as np
 from s2cloudless import S2PixelCloudDetector
-from osgeo.gdal import GDT_Byte as Byte
 import rasterio as rio
-from rasterio.warp import reproject, Resampling
 
 import cfsi
 from cfsi.scripts.index.s2cloudless_index import S2CloudlessIndexer
 from cfsi.scripts.masks.cloud_mask_generator import CloudMaskGenerator
-from cfsi.utils.load_datasets import dataset_from_odcdataset
+from cfsi.utils import get_s2_tile_ids, read_transform_from_file
+from cfsi.utils.load_datasets import xadataset_from_odcdataset
 from cfsi.utils.logger import create_logger
-from cfsi.utils.write_utils import get_s2_tile_ids, odcdataset_to_multiple_tif
+from cfsi.utils.write_utils import odcdataset_to_multiple_tif
 
 LOGGER = create_logger("s2cloudless", level=DEBUG)
 
@@ -45,67 +43,28 @@ class S2CloudlessGenerator(CloudMaskGenerator):
 
         return self._continue_iteration()
 
-    def __process_dataset(self, dataset: ODCDataset) -> (np.ndarray, np.ndarray):
+    def __process_dataset(self, l1c_dataset: ODCDataset) -> (np.ndarray, np.ndarray):
         """ Generate cloud and cloud shadow masks for a single datacube dataset """
-        _, s3_key = get_s2_tile_ids(dataset)
-        mean_sun_azimuth = dataset.metadata_doc["properties"]["mean_sun_azimuth"]
+        _, s3_key = get_s2_tile_ids(l1c_dataset)
+        mean_sun_azimuth = l1c_dataset.metadata_doc["properties"]["mean_sun_azimuth"]
 
-        ds = dataset_from_odcdataset(dataset)
-
-        LOGGER.info("Fetching data to array")
-        array = self.__construct_s2_array(dataset)
+        LOGGER.info("Creating S2 image array")
+        l1c_array = self.__construct_s2_array(l1c_dataset)
         LOGGER.info(f"Generating s2cloudless masks for {s3_key}")
-        cloud_masks = self.__generate_cloud_masks(array)
+        cloud_masks = self.__generate_cloud_masks(l1c_array)
         LOGGER.info(f"Generating shadow masks for {s3_key}")
         shadow_masks = self.__generate_cloud_shadow_masks(
-            array[:, :, :, 7], cloud_masks, mean_sun_azimuth)
+            l1c_array[:, :, :, 7], cloud_masks, mean_sun_azimuth)
         return cloud_masks, shadow_masks
 
     def __construct_s2_array(self, dataset: ODCDataset) -> np.ndarray:
         """ Constructs a np.ndarray from S2 L1C dataset """
         if not config.masks.s2cloudless_masks.cache:
-            ds = dataset_from_odcdataset(dataset)
+            ds = xadataset_from_odcdataset(dataset)
             return np.moveaxis(ds.to_array().values.astype("float64") / 10000, 0, -1)
 
-        jp2_files = self.__fetch_s2_data(dataset)
-        return self.__array_from_jp2_files(dataset, jp2_files)
-
-    def __fetch_s2_data(self, dataset: ODCDataset) -> List[str]:
-        """ Fetches S2 data from S3 in .SAFE format, returns list of fetched JP2 files """
-        tile_id, s3_key = get_s2_tile_ids(dataset)
-        image_path = self.fetch_s2_to_safe(tile_id).joinpath("IMG_DATA")
-        jp2_files = glob.glob(str(image_path) + "/*B??.jp2")
-        jp2_files.sort()  # B1, B2, B3, ... B11, B12, B8A
-        jp2_files.insert(8, jp2_files[-1])  # ... B7, B8, B8A, B9, ...
-        jp2_files = jp2_files[:-1]
-        if len(jp2_files) != 13:
-            LOGGER.warning(f"Unexpected number of images in {image_path}: {len(jp2_files)}")
-        return jp2_files
-
-    @staticmethod
-    def __array_from_jp2_files(dataset: ODCDataset, jp2_files: List[str]) -> np.ndarray:
-        """ Constructs a np.ndarray from a list of JP2 files """
-        LOGGER.info("Reading and reprojecting data to arrays from JP2 files")
-        arrays = []
-        with rio.open(jp2_files[1], nodata=0) as f:  # Read B02 first as it has full resolution
-            data = f.read()
-            tmp_arr = np.empty_like(data)
-            transform = f.transform
-
-        for jp2_file in jp2_files:
-            with rio.open(jp2_file) as f:
-                data = f.read()
-                reproject(data, destination=tmp_arr,
-                          src_transform=f.transform, dst_transform=transform,
-                          src_crs=f.crs, dst_crs=f.crs,
-                          src_nodata=0, dst_nodata=0,
-                          resampling=Resampling.nearest)
-                arrays.append(tmp_arr)
-
-        LOGGER.info("Constructing final array")
-        final_array = np.array(arrays, dtype="float64") / 10000
-        final_array = np.moveaxis(final_array, 0, -1)
-        return final_array
+        jp2_files = self.fetch_s2_jp2_files(dataset)
+        return self.array_from_jp2_files(jp2_files)
 
     @staticmethod
     def __generate_cloud_masks(array: np.ndarray) -> np.ndarray:
@@ -157,32 +116,27 @@ class S2CloudlessGenerator(CloudMaskGenerator):
         dark_pixels = np.squeeze(np.where(nir_array <= dark_pixel_threshold, 1, 0))
         return np.where((cloud_mask_array == 0) & (shadow_mask_array == 1) & (dark_pixels == 1), 1, 0)
 
-    def __write_masks(self, dataset: ODCDataset,
+    def __write_masks(self, l1c_dataset: ODCDataset,
                       mask_arrays: (np.ndarray, np.ndarray)) -> Dict[str, Path]:
         """ Writes cloud and shadow masks to files """
         masks = {"clouds": mask_arrays[0],
                  "shadows": mask_arrays[1]}
-        output_mask_files = self.__write_mask_arrays(dataset, masks)
+
+        transform = None
+        if config.masks.s2cloudless_masks.cache:
+            transform = read_transform_from_file(self.fetch_s2_jp2_files(l1c_dataset)[1])
+
+        output_mask_files = odcdataset_to_multiple_tif(
+            l1c_dataset, masks, product_name=self.mask_product_name,
+            data_type=rio.ubyte, custom_transform=transform)
+
         output_masks = {
             "cloud_mask": output_mask_files[0],
             "shadow_mask": output_mask_files[1]}
 
-        self.write_l1c_reference(dataset)
+        self.write_l1c_reference(l1c_dataset)
 
         return output_masks
-
-    def __write_mask_arrays(self, dataset: ODCDataset, masks: Dict[str, np.ndarray]) -> List[Path]:
-        """ Writes mask arrays to GeoTIFF files """
-        transform = None
-        if config.masks.s2cloudless_masks.cache:
-            jp2_files = self.__fetch_s2_data(dataset)
-            with rio.open(jp2_files[1], nodata=0) as f:  # Read B02 first as it has full resolution
-                transform = (tuple(f.transform.to_gdal()), f.crs.to_wkt())
-
-        return odcdataset_to_multiple_tif(dataset, masks,
-                                          product_name=self.mask_product_name,
-                                          data_type=Byte,
-                                          transform=transform)
 
 
 if __name__ == "__main__":

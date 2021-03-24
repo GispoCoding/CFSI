@@ -1,3 +1,4 @@
+import glob
 import os
 from logging import DEBUG
 from pathlib import Path
@@ -5,11 +6,15 @@ from typing import List, Optional
 
 from datacube import Datacube
 from datacube.model import Dataset as ODCDataset
+import numpy as np
+import rasterio as rio
+from rasterio.warp import reproject, Resampling
 from sentinelhub import AwsTile, AwsTileRequest, DataCollection
 
 import cfsi
+from cfsi.utils import check_existing_mask_directory, get_s2_tile_ids
 from cfsi.utils.logger import create_logger
-from cfsi.utils.write_utils import check_existing_mask_directory, write_l1c_dataset
+from cfsi.utils.write_utils import write_l1c_dataset
 
 config = cfsi.config()
 LOGGER = create_logger("cloud_mask_generator", level=DEBUG)
@@ -45,6 +50,19 @@ class CloudMaskGenerator:
         l1c_datasets = dc.find_datasets(product=self.l1c_product_name)
         return l1c_datasets
 
+    def fetch_s2_jp2_files(self, dataset: ODCDataset) -> List[Path]:
+        """ Fetches S2 data from S3 in .SAFE format, returns list of fetched JP2 files """
+        tile_id, s3_key = get_s2_tile_ids(dataset)
+        image_path = self.fetch_s2_to_safe(tile_id).joinpath("IMG_DATA")
+        jp2_files = glob.glob(str(image_path) + "/*B??.jp2")
+        jp2_files.sort()  # B1, B2, B3, ... B11, B12, B8A
+        jp2_files.insert(8, jp2_files[-1])  # ... B7, B8, B8A, B9, ...
+        jp2_files = jp2_files[:-1]
+        if len(jp2_files) != 13:
+            LOGGER.warning(f"Unexpected number of images in {image_path}: {len(jp2_files)}")
+        jp2_files = [Path(jp2_file) for jp2_file in jp2_files]
+        return jp2_files
+
     @staticmethod
     def fetch_s2_to_safe(tile_id: str) -> Path:
         """ Fetches S2 granule by tile ID from AWS S3 to .SAFE format.
@@ -65,6 +83,34 @@ class CloudMaskGenerator:
         return base_output_path.joinpath(tile_output_directory)
 
     @staticmethod
+    def array_from_jp2_files(jp2_files: List[Path]) -> np.ndarray:
+        """ Constructs a np.ndarray from a list of JP2 files """
+        LOGGER.info("Reading and reprojecting data to arrays from JP2 files")
+        arrays = []
+
+        with rio.open(jp2_files[1], nodata=0) as f:  # Read 10m transform from B02
+            data = f.read()
+            dest_transform = f.transform
+            dest_shape = data.shape
+            dest_datatype = data.dtype
+
+        for jp2_file in jp2_files:
+            with rio.open(jp2_file) as f:
+                data = f.read()
+                dest_array = np.zeros(dest_shape, dest_datatype)
+                reproject(data, destination=dest_array,
+                          src_transform=f.transform, dst_transform=dest_transform,
+                          src_crs=f.crs, dst_crs=f.crs,
+                          src_nodata=0, dst_nodata=0,
+                          resampling=Resampling.nearest)
+                arrays.append(dest_array)
+
+        LOGGER.info("Constructing final array")
+        final_array = np.array(arrays, dtype="float64") / 10000
+        final_array = np.moveaxis(final_array, 0, -1)
+        return final_array
+
+    @staticmethod
     def _create_mask(l1c_dataset: ODCDataset) -> bool:
         """ Overridden in subclasses """
         pass
@@ -72,7 +118,8 @@ class CloudMaskGenerator:
     def _should_process(self, dataset: ODCDataset) -> bool:
         """ Checks if masks should be generated for given ODCDataset """
         if check_existing_mask_directory(dataset, self.mask_product_name):
-            LOGGER.info(f"{self.mask_product_name} files for dataset {dataset} already exist, skipping")
+            LOGGER.info(f"{self.mask_product_name} files for dataset "
+                        f"{dataset.uris[0]} already exist, skipping")
             return False
         metadata_cloud_percentage, in_threshold = self._check_clouds_in_threshold(dataset)
         if not in_threshold:
@@ -110,8 +157,8 @@ class CloudMaskGenerator:
         return True
 
     @staticmethod
-    def write_l1c_reference(dataset: ODCDataset):
+    def write_l1c_reference(l1c_dataset: ODCDataset):
         if config.masks.write_rgb:
-            write_l1c_dataset(dataset)
+            write_l1c_dataset(l1c_dataset)
         if config.masks.write_l1c:
-            write_l1c_dataset(dataset, rgb=False)
+            write_l1c_dataset(l1c_dataset, rgb=False)

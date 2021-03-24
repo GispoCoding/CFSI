@@ -12,3 +12,4 @@ dependencies:
   - sentinelhub=3.1.*
   - rasterio=1.1.*
   - numpy=1.19.*
+  - sqlalchemy=1.3.*

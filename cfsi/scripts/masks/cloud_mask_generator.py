@@ -12,7 +12,7 @@ from cfsi.utils.logger import create_logger
 from cfsi.utils.write_utils import check_existing_mask_directory, write_l1c_dataset
 
 config = cfsi.config()
-LOGGER = create_logger("fmask", level=DEBUG)
+LOGGER = create_logger("cloud_mask_generator", level=DEBUG)
 
 
 class CloudMaskGenerator:

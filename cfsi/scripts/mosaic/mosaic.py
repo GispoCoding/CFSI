@@ -13,7 +13,7 @@ import xarray as xa
 import cfsi
 from cfsi.utils.load_datasets import xadataset_from_odcdataset
 from cfsi.utils.logger import create_logger
-from cfsi.utils.write_utils import array_to_geotiff, rio_params_for_xadataset
+from cfsi.utils.write_utils import array_to_geotiff, rio_params_for_xadataset, create_overviews
 
 LOGGER = create_logger("mosaic", level=DEBUG)
 
@@ -119,15 +119,16 @@ class MosaicCreator:
             recentness_arr[:] = latest_time
 
         for index in range(len(da_in.time) - 2, -1, -1):
-            LOGGER.debug(f"Index {index}/{len(da_in.time) - 2}")
             nodata_pixels = np.count_nonzero(out_arr == 0)
             if nodata_pixels > 1000000:
                 nodata_pixels = str(round(nodata_pixels/1000000)) + 'Mp'
             else:
                 nodata_pixels = str(nodata_pixels) + 'p'
-            LOGGER.debug("Nodata (0) pixels remaining: "
-                         f"{nodata_pixels}/{total_pixels}")
-            da_slice = da_in.isel(time=index)  # TODO: check if .drop("time") needed
+            LOGGER.info(f"Index {index}/{len(da_in.time) - 2}; "
+                        "Nodata pixels remaining: "
+                        f"{nodata_pixels}/{total_pixels}")
+
+            da_slice = da_in.isel(time=index)
             if recentness:
                 da_slice_time = da_in.time[index].values.astype('datetime64[D]').astype('uint16')
                 recentness_arr[out_arr == 0] = da_slice_time
@@ -144,17 +145,19 @@ class MosaicCreator:
 
     def write_mosaic_to_file(self, mosaic_ds: xa.Dataset) -> Path:
         """ Creates a new mosaic from a list of S2Cloudless mask ODC Datasets """
-        filepath = self.__generate_mosaic_output_path()
+        file_path = self.__generate_mosaic_output_path()
 
         LOGGER.info("Constructing mosaic array")
         data: List[np.ndarray] = [np.squeeze(mosaic_ds[band].values)
                                   for band in mosaic_ds.data_vars]
         geo_transform, projection = rio_params_for_xadataset(mosaic_ds)
 
-        LOGGER.info(f"Writing mosaic to {filepath}")
-        array_to_geotiff(filepath, data, geo_transform, projection, data_type=rio.uint16)
-        LOGGER.info(f"Generated mosaic {filepath}")
-        return filepath
+        LOGGER.info(f"Writing mosaic to {file_path}")
+        array_to_geotiff(file_path, data, geo_transform, projection,
+                         compress="none", data_type=rio.uint16)
+        create_overviews(file_path)
+        LOGGER.info(f"Generated mosaic {file_path}")
+        return file_path
 
     def __generate_mosaic_output_path(self) -> Path:
         """ Generates an output Path for a new mosaic """

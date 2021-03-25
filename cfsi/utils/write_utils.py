@@ -4,6 +4,7 @@ import numpy as np
 import xarray as xa
 import rasterio as rio
 from rasterio.crs import CRS
+from rasterio.enums import Resampling
 from rasterio.transform import Affine
 
 from cfsi.utils import generate_s2_tif_path
@@ -50,7 +51,7 @@ def odcdataset_to_single_tif(dataset: ODCDataset,
         geo_transform, projection = rio_params_for_odcdataset(dataset)
 
     output_path = generate_s2_tif_path(dataset, product_name)
-    array_to_geotiff(output_path, data, geo_transform, projection, data_type=data_type)
+    array_to_geotiff(output_path, data, geo_transform=geo_transform, projection=projection, data_type=data_type)
     return output_path
 
 
@@ -74,10 +75,8 @@ def odcdataset_to_multiple_tif(dataset: ODCDataset,
     output_paths = []
     for band_name, band_data in data.items():
         output_path = generate_s2_tif_path(dataset, product_name, band_name)
-        array_to_geotiff(output_path,
-                         band_data,
-                         geo_transform,
-                         projection,
+        array_to_geotiff(output_path, band_data,
+                         geo_transform=geo_transform, projection=projection,
                          data_type=data_type)
         output_paths.append(output_path)
     return output_paths
@@ -98,14 +97,14 @@ def rio_params_for_xadataset(dataset: xa.Dataset):
 
 def array_to_geotiff(file_path: Path,
                      data: Union[List[np.ndarray], np.ndarray],
-                     geo_transform: Tuple,
-                     projection,
-                     data_type=rio.float32):
+                     geo_transform: Affine, projection: CRS,
+                     compress: str = "lzw", data_type=rio.float32):
     """ Write a single or multi band GeoTIFF
     :param file_path: output geotiff file path including extension
     :param data: (list of) numpy array(s), all written to single file
     :param geo_transform: Geotransform for output raster in rasterio format
     :param projection: projection for output raster in rasterio format
+    :param compress: output compression method, use "none" for uncompressed, optional
     :param data_type: rasterio data type, optional """
     if not file_path.parent.exists():
         LOGGER.info(f"Creating output directory {file_path.parent}")
@@ -115,7 +114,7 @@ def array_to_geotiff(file_path: Path,
 
     rows, cols = data[0].shape  # Create raster of given size and projection
     with rio.open(file_path, "w",
-                  driver="GTiff", compress="lzw",
+                  driver="GTiff", compress=compress,
                   height=rows, width=cols,
                   transform=geo_transform, crs=projection,
                   count=(len(data)), nodata=0,
@@ -123,3 +122,11 @@ def array_to_geotiff(file_path: Path,
 
         for idx, d in enumerate(data):
             dest.write(d.astype(data_type), idx + 1)
+
+
+def create_overviews(file_path: Path):
+    """ Create internal overviews to GeoTIFF
+    :param file_path: Path to GeoTIFF file """
+    with rio.open(file_path, "r+") as f:
+        f.build_overviews([2, 4, 8, 16, 32], Resampling.nearest)
+        f.update_tags(ns="rio_overview", resampling="nearest")

@@ -110,7 +110,7 @@ class MosaicCreator:
         out_arr = da_out.values
         recentness_arr = None
         cols, rows = da_out.sizes['x'], da_out.sizes['y']
-        LOGGER.debug(f"Out array shape (x, y): {cols, rows}")
+        LOGGER.info(f"Mosaic array shape (x, y): {cols, rows}")
         total_pixels = f"{round((cols * rows) / 1000000)}Mp"
 
         if recentness:
@@ -132,7 +132,6 @@ class MosaicCreator:
             if recentness:
                 da_slice_time = da_in.time[index].values.astype('datetime64[D]').astype('uint16')
                 recentness_arr[out_arr == 0] = da_slice_time
-            LOGGER.debug("Setting new out array values")
             out_arr[out_arr == 0] = da_slice.values[out_arr == 0]
 
         da_out.values = out_arr

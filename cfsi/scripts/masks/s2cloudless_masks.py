@@ -35,8 +35,7 @@ class S2CloudlessGenerator(CloudMaskGenerator):
         if not self._should_process(l1c_dataset):
             return True
 
-        LOGGER.info(f"Iteration {self.i}/{self.max_iterations}: {l1c_dataset}")
-
+        LOGGER.info(f"Iteration {self.i}/{self.total_iterations} ({self.max_iterations}): {l1c_dataset.uris[0]}")
         mask_arrays = self.__process_dataset(l1c_dataset)
         output_masks = self.__write_masks(l1c_dataset, mask_arrays)
         self.indexed_masks.append(S2CloudlessIndexer().index_masks(l1c_dataset, output_masks))

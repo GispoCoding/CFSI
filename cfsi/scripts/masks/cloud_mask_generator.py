@@ -28,11 +28,13 @@ class CloudMaskGenerator:
         self.indexed_masks: List[ODCDataset] = []
         self.mask_product_name: Optional[str] = None
         self.max_iterations: Optional[int] = None
+        self.total_iterations: Optional[int] = None
 
     def create_masks(self):
         l1c_datasets = self.get_l1c_datasets()
         if len(l1c_datasets) < self.max_iterations or not self.max_iterations:
             self.max_iterations = len(l1c_datasets)
+        self.total_iterations = self.max_iterations
 
         for l1c_dataset in l1c_datasets:
             should_continue = self._create_mask(l1c_dataset)
@@ -77,7 +79,7 @@ class CloudMaskGenerator:
                                  data_folder=base_output_path,
                                  data_collection=DataCollection.SENTINEL2_L1C,
                                  safe_format=True)
-        LOGGER.info(f"Fetching data to .SAFE format for granule {tile_id}")
+        LOGGER.info(f"Fetching .SAFE for {tile_id}")
         request.save_data()
         tile_output_directory = Path(request.get_filename_list()[0]).parts[0]
         return base_output_path.joinpath(tile_output_directory)
@@ -118,11 +120,13 @@ class CloudMaskGenerator:
     def _should_process(self, dataset: ODCDataset) -> bool:
         """ Checks if masks should be generated for given ODCDataset """
         if check_existing_mask_directory(dataset, self.mask_product_name):
-            LOGGER.info(f"{self.mask_product_name} files for dataset "
-                        f"{dataset.uris[0]} already exist, skipping")
+            LOGGER.info(f"Existing {self.mask_product_name} files for "
+                        f"{dataset.uris[0]}, skipping")
+            self.total_iterations -= 1
             return False
         metadata_cloud_percentage, in_threshold = self._check_clouds_in_threshold(dataset)
         if not in_threshold:
+            self.total_iterations -= 1
             return False
         return True
 

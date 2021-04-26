@@ -28,7 +28,7 @@ class FmaskGenerator(CloudMaskGenerator):
         if not self._should_process(l1c_dataset):
             return True
 
-        LOGGER.info(f"Iteration {self.i}/{self.max_iterations}: {l1c_dataset}")
+        LOGGER.info(f"Iteration {self.i}/{self.total_iterations} ({self.max_iterations}): {l1c_dataset.uris[0]}")
         output_mask = {"fmask": self.__create_fmask_file(l1c_dataset)}
         self.indexed_masks.append(FmaskIndexer().index_masks(l1c_dataset, output_mask))
 

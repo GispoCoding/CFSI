@@ -98,9 +98,11 @@ class MosaicCreator:
             l2a_dataset_id = mask_dataset.metadata_doc["properties"]["l2a_dataset_id"]
             if not l2a_dataset_id:
                 try:
+                    LOGGER.info("L2A dataset id not provided, searching using URI")
                     l2a_uri = mask_dataset.metadata_doc["properties"]["l2a_uri"]
                     l2a_dataset_id = odcdataset_from_uri(l2a_uri, "s2_sen2cor_granule").id
                 except ProductNotFoundException:
+                    LOGGER.warning(f"L2A dataset not in index, skipping mask {mask_dataset}")
                     continue
             mask_dict[mask_dataset.id] = l2a_dataset_id
         return mask_dict

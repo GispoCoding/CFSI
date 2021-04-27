@@ -8,11 +8,12 @@ import xarray as xa
 from cfsi.exceptions import ProductNotFoundException
 
 
-def odcdataset_from_uri(self, uri: str, product: str = None) -> ODCDataset:
+def odcdataset_from_uri(uri: str, product: str = None) -> ODCDataset:
     """ Returns the id of a ODCDataset that matches the given URI """
+    dc = Datacube(app="dataset_from_uri")
     query = dict(product=product, uri=uri, limit=1)
     try:
-        dataset: ODCDataset = [odc_ds for odc_ds in self.dc.index.datasets.search(**query)][0]
+        dataset: ODCDataset = [odc_ds for odc_ds in dc.index.datasets.search(**query)][0]
     except IndexError:
         raise ProductNotFoundException
     return dataset

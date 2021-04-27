@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Dict, Union
 from types import SimpleNamespace
 from urllib.parse import urlparse
-from uuid import UUID
 from xml.etree import ElementTree
 
 from boto3 import Session
@@ -13,6 +12,8 @@ from datacube.model import Dataset as ODCDataset
 from datacube.utils import changes
 from datacube.utils.changes import DocumentMismatchError
 
+from cfsi.exceptions import ProductNotFoundException
+from cfsi.utils.load_datasets import odcdataset_from_uri
 from cfsi.utils.logger import create_logger
 from cfsi.utils.utils import swap_s2_bucket_names
 
@@ -55,8 +56,14 @@ class ODCIndexer:
 
     def generate_mask_properties(self, l1c_dataset: ODCDataset) -> (Dict, Dict):
         l1c_uri = l1c_dataset.uris[0]
+        l2a_uri = swap_s2_bucket_names(l1c_uri)
         l1c_metadata_uri = l1c_uri + "/metadata.xml"
-        l2a_dataset_id = self.l2a_dataset_from_l1c(l1c_dataset).id
+        try:
+            l2a_dataset_id = odcdataset_from_uri(l2a_uri, "s2_sen2cor_granule").id
+        except ProductNotFoundException:
+            LOGGER.warning(f"Couldn't find L2A dataset matching URI {l2a_uri}")
+            l2a_dataset_id = ""
+            # TODO: does L1C ds with missing L2A need to be deleted or archived?
 
         l1c_metadata_doc = self.s3obj_to_etree(self.get_object_from_s3_uri(
             l1c_metadata_uri, RequestPayer="requester"))
@@ -74,6 +81,7 @@ class ODCIndexer:
             "cloudy_pixel_percentage": tile_metadata.cloudy_pixel_percentage,
             "s3_key": "/".join(Path(l1c_uri).parts[2:]),  # TODO: replace with urlparse
             "l2a_dataset_id": l2a_dataset_id,
+            "l2a_uri": l2a_uri,
         }
         grids = self.read_s2_grid_metadata(l1c_metadata_doc)
         return properties, grids
@@ -176,21 +184,3 @@ class ODCIndexer:
                                           grids[resolution]["ydim"], grids[resolution]["uly"],
                                           0.0, 0.0, 1.0]
         return grids
-
-    def l2a_dataset_from_l1c(self, l1c_dataset: ODCDataset):
-        """ Gets the S2 L2A dataset ODCDataset that corresponds to l1c_dataset """
-        l1c_uri = l1c_dataset.uris[0]
-        l2a_uri = swap_s2_bucket_names(l1c_uri)
-        l2a_dataset_id = self.odcdataset_id_from_uri(l2a_uri, "s2_sen2cor_granule")
-        l2a_odcdataset: ODCDataset = self.dc.index.datasets.get(l2a_dataset_id)
-        return l2a_odcdataset
-
-    def odcdataset_id_from_uri(self, uri: str, product: str = None) -> UUID:
-        """ Returns the id of a ODCDataset that matches the given URI """
-        query = dict(product=product, uri=uri, limit=1)
-        try:
-            dataset: ODCDataset = [odc_ds for odc_ds in self.dc.index.datasets.search(**query)][0]
-        except IndexError:
-            LOGGER.warning(f"Couldn't find ODC Dataset for product {product} matching URI {uri}")
-            raise  # TODO: custom exception
-        return dataset.id

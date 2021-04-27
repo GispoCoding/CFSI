@@ -5,6 +5,18 @@ from datacube import Datacube
 from datacube.model import Dataset as ODCDataset
 import xarray as xa
 
+from cfsi.exceptions import ProductNotFoundException
+
+
+def odcdataset_from_uri(self, uri: str, product: str = None) -> ODCDataset:
+    """ Returns the id of a ODCDataset that matches the given URI """
+    query = dict(product=product, uri=uri, limit=1)
+    try:
+        dataset: ODCDataset = [odc_ds for odc_ds in self.dc.index.datasets.search(**query)][0]
+    except IndexError:
+        raise ProductNotFoundException
+    return dataset
+
 
 def xadataset_from_odcdataset(
         datasets: Union[List[ODCDataset], ODCDataset] = None,

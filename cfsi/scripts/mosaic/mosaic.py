@@ -2,7 +2,8 @@ import os
 from datetime import datetime, date, timedelta
 from logging import DEBUG
 from pathlib import Path
-from typing import List
+from typing import List, Dict
+from uuid import UUID
 
 from datacube import Datacube
 from datacube.model import Dataset as ODCDataset
@@ -11,7 +12,8 @@ import rasterio as rio
 import xarray as xa
 
 import cfsi
-from cfsi.utils.load_datasets import xadataset_from_odcdataset
+from cfsi.exceptions import ProductNotFoundException
+from cfsi.utils.load_datasets import xadataset_from_odcdataset, odcdataset_from_uri
 from cfsi.utils.logger import create_logger
 from cfsi.utils.write_utils import array_to_geotiff, rio_params_for_xadataset, create_overviews
 
@@ -81,16 +83,27 @@ class MosaicCreator:
 
     def __setup_mask_datacube(self) -> xa.Dataset:
         """ Creates a datacube with L2A S2 bands and cloud masks """
-        mask_dict = {}
-        for dataset in self.__mask_datasets:
-            mask_dict[dataset.id] = dataset.metadata_doc["properties"]["l2a_dataset_id"]
-
+        mask_dict = self.__generate_mask_dict()
         mask_dataset_ids = list(mask_dict.keys())
         l2a_dataset_ids = list(mask_dict.values())
 
         ds_l2a = xadataset_from_odcdataset(ids=l2a_dataset_ids)
         ds_mask = xadataset_from_odcdataset(ids=mask_dataset_ids)
         return ds_l2a.merge(ds_mask)
+
+    def __generate_mask_dict(self) -> Dict[UUID, UUID]:
+        """ Generates a dict of mask_dataset.id: l2a_dataset.id """
+        mask_dict = {}
+        for mask_dataset in self.__mask_datasets:
+            l2a_dataset_id = mask_dataset.metadata_doc["properties"]["l2a_dataset_id"]
+            if not l2a_dataset_id:
+                try:
+                    l2a_uri = mask_dataset.metadata_doc["properties"]["l2a_uri"]
+                    l2a_dataset_id = odcdataset_from_uri(l2a_uri, "s2_sen2cor_granule").id
+                except ProductNotFoundException:
+                    continue
+            mask_dict[mask_dataset.id] = l2a_dataset_id
+        return mask_dict
 
     def __apply_mask(self, ds: xa.Dataset) -> xa.Dataset:
         """ """

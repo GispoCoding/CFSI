@@ -83,6 +83,11 @@ class MosaicCreator:
                     ds_out[f"{band}_recentness"] = mosaic_da[f"{band}_recentness"]
                     LOGGER.info(f"Generated recentness array for band {band}")
             i += 1
+            # nodata_pixels = np.count_nonzero(ds_out[band].values == 0)
+            # LOGGER.debug(f"Nodata pixels remaining: {nodata_pixels}")
+            # if nodata_pixels == 0:
+            #     LOGGER.info(f"All pixels filled for band {band}, continuing to next band")
+            #     continue
 
         LOGGER.info("Mosaic creation finished")
         ds_out = ds_out.drop_vars(key for key in ds_out.data_vars.keys()
@@ -152,6 +157,12 @@ class MosaicCreator:
 
         for index in range(len(da_in.time) - 2, -1, -1):
             nodata_pixels = np.count_nonzero(out_arr == 0)
+            if nodata_pixels <= config.mosaic.nodata_cutoff:
+                LOGGER.info(f"Nr. of pixels with missing data ({nodata_pixels}"
+                            f" less than cutoff value {config.mosaic.nodata_cutoff},"
+                            f" finishing band")
+                break
+
             if nodata_pixels > 1000000:
                 nodata_pixels = str(round(nodata_pixels/1000000)) + 'Mp'
             else:

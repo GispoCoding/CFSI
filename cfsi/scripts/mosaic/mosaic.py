@@ -31,6 +31,9 @@ class MosaicCreator:
                  days: int = 30):
         """ Constructor method """
         self.__product_name = mask_product_name
+        if mask_product_name == "scl":
+            self.__product_name = "s2_sen2cor_granule"
+
         if date_ == "today":
             self.__end_date = date.today()
         else:
@@ -83,6 +86,8 @@ class MosaicCreator:
 
     def __setup_mask_datacube(self) -> xa.Dataset:
         """ Creates a datacube with L2A S2 bands and cloud masks """
+        if self.__product_name == "s2_sen2cor_granule":
+            return self.__setup_l2a_datacube()
         mask_dict = self.__generate_mask_dict()
         mask_dataset_ids = list(mask_dict.keys())
         l2a_dataset_ids = list(mask_dict.values())
@@ -90,6 +95,11 @@ class MosaicCreator:
         ds_l2a = xadataset_from_odcdataset(ids=l2a_dataset_ids)
         ds_mask = xadataset_from_odcdataset(ids=mask_dataset_ids)
         return ds_l2a.merge(ds_mask)
+
+    def __setup_l2a_datacube(self) -> xa.Dataset:
+        """ Creates a datacube with only L2A datasets for SCL mosaics """
+        ids = [ds.id for ds in self.__mask_datasets]
+        return xadataset_from_odcdataset(ids=ids)
 
     def __generate_mask_dict(self) -> Dict[UUID, UUID]:
         """ Generates a dict of mask_dataset.id: l2a_dataset.id """
@@ -113,6 +123,8 @@ class MosaicCreator:
             return ds.where((ds.cloud_mask == 0) & (ds.shadow_mask == 0), 0)
         elif self.__product_name == "s2_level1c_fmask":
             return ds.where((ds.fmask == 1) | (ds.fmask == 4) | (ds.fmask == 5), 0)
+        elif self.__product_name == "s2_sen2cor_granule":
+            return ds.where((ds.scl == 2) | (ds.scl == 3) | (ds.scl == 4) | (ds.scl == 9), 0)
         raise ValueError("Invalid mask product name")  # TODO: custom exception
 
     @staticmethod

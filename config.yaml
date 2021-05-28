@@ -73,9 +73,11 @@ mosaic:
 
   # List of cloud/shadow mask products to use for creating mosaics.
   # An output mosaic is generated for each entry.
+  # Use value scl to create a mosaic using Sentinel-2 Scene Classification Layer.
   products: [
       "s2_level1c_s2cloudless",
       "s2_level1c_fmask",
+      "scl",
   ]
 
   # Range defines the maximum range (in days) to look for cloudless pixels.

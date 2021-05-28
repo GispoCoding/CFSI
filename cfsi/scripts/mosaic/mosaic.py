@@ -31,8 +31,12 @@ class MosaicCreator:
                  days: int = 30):
         """ Constructor method """
         self.__product_name = mask_product_name
+        self.__use_masks = True
         if mask_product_name == "scl":
             self.__product_name = "s2_sen2cor_granule"
+        if mask_product_name == "l2a":
+            self.__product_name = "s2_sen2cor_granule"
+            self.__use_masks = False
 
         if date_ == "today":
             self.__end_date = date.today()
@@ -58,7 +62,8 @@ class MosaicCreator:
                     f"from {len(self.__mask_datasets)} masks "
                     f"from {self.__start_date} to {self.__end_date}")
         ds = self.__setup_mask_datacube()
-        ds = self.__apply_mask(ds)
+        if self.__use_masks:
+            ds = self.__apply_mask(ds)
 
         ds_out: xa.Dataset = ds.copy(deep=True).isel(time=-1)
         recentness: int = config.mosaic.recentness

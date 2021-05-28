@@ -94,7 +94,6 @@ mosaic:
       "B03_10m",
       "B04_10m",
   ]
-  write_original: false  # Write original S2-L2A output images
   # How many nodata pixels to allow in output mosaic.
   # Use value 0 to ensure all pixels are filled if possible.
   nodata_cutoff: 1000

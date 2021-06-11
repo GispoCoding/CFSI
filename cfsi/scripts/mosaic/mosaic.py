@@ -134,7 +134,7 @@ class MosaicCreator:
         elif self.__product_name == "s2_level1c_fmask":
             return ds.where((ds.fmask == 1) | (ds.fmask == 4) | (ds.fmask == 5), 0)
         elif self.__product_name == "s2_sen2cor_granule":
-            return ds.where((ds.scl == 2) | (ds.scl == 3) | (ds.scl == 4) | (ds.scl == 9), 0)
+            return ds.where((ds.scl == 2) | (ds.scl == 4) | (ds.scl == 5) | (ds.scl == 6) | (ds.scl == 11), 0)
         raise ValueError("Invalid mask product name")  # TODO: custom exception
 
     @staticmethod
